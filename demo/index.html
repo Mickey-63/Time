@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>La grenouille</title>
+<title>Lisa la grenouille</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
@@ -21,7 +21,7 @@ html, body { height: 100%; margin: 0; overflow: hidden; }
 body { background: radial-gradient(120% 90% at 50% 35%, var(--eau) 0%, var(--eau-fond) 100%); color: var(--texte); font-family: var(--f); -webkit-user-select: none; user-select: none; }
 #mare { position: fixed; inset: 0; overflow: hidden; touch-action: none; cursor: crosshair; }
 .pad { position: absolute; border-radius: 50%; background: conic-gradient(from var(--a), var(--nenuphar) 0 322deg, transparent 322deg); box-shadow: inset 0 0 0 3px var(--nenuphar-bord); opacity: .8; }
-.pad::after { content: ''; position: absolute; inset: 22%; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, .13), transparent 70%); }
+.pad svg { position: absolute; left: 22%; top: 22%; width: 56%; height: 56%; overflow: visible; }
 header { position: absolute; left: 0; right: 0; top: 0; padding: calc(12px + env(safe-area-inset-top)) 16px 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; pointer-events: none; z-index: 5; }
 h1 { margin: 0; font-size: clamp(24px, 6vw, 38px); line-height: 1; font-weight: 800; text-wrap: balance; }
 header p { margin: 4px 0 0; font-size: clamp(14px, 3.6vw, 18px); font-weight: 600; opacity: .85; }
@@ -38,8 +38,10 @@ header p { margin: 4px 0 0; font-size: clamp(14px, 3.6vw, 18px); font-weight: 60
 .en-l-air .assis { display: none; }
 .paupiere { transform: scaleY(0); transform-box: fill-box; transform-origin: 50% 0; transition: transform .07s linear; }
 .clin .paupiere { transform: scaleY(1); }
-.langue { display: none; }
-.nargue .langue { display: block; }
+.eventail { display: none; }
+.nargue .eventail { display: block; }
+.nargue .paupiere.d { transform: scaleY(1); }
+.en-l-air .eventail { display: none; }
 .peur .pupille { r: 5; }
 #bulle { position: absolute; left: 0; top: 0; background: var(--bulle); color: var(--encre); font-weight: 800; font-size: clamp(16px, 4.4vw, 22px); line-height: 1; padding: 9px 14px 7px; border-radius: 16px; white-space: nowrap; opacity: 0; transition: opacity .15s; z-index: 4; pointer-events: none; }
 #bulle.vue { opacity: 1; }
@@ -52,11 +54,11 @@ header p { margin: 4px 0 0; font-size: clamp(14px, 3.6vw, 18px); font-weight: 60
 <body>
 <div id="mare">
   <header>
-    <div><h1>La grenouille</h1><p>Essaie de la toucher.</p></div>
-    <div class="droite"><div id="compteur" aria-live="polite">Évasions : 0</div><button id="son" type="button" aria-pressed="false">Son coupé</button></div>
+    <div><h1>Lisa la grenouille</h1><p>Essaie de la toucher.</p></div>
+    <div class="droite"><div id="compteur" aria-live="polite">Évasions : 0</div><button id="son" type="button" aria-pressed="true">Son activé</button></div>
   </header>
   <div id="ombre"></div>
-  <div id="grenouille" aria-label="Une grenouille qui se promène" role="img">
+  <div id="grenouille" aria-label="Lisa, une grenouille élégante qui se promène" role="img">
     <svg viewBox="0 0 200 170" aria-hidden="true">
       <!-- pattes arrière, au repos -->
       <g class="assis">
@@ -84,16 +86,40 @@ header p { margin: 4px 0 0; font-size: clamp(14px, 3.6vw, 18px); font-weight: 60
       <g class="saut" fill="none" stroke="#46a83a" stroke-width="12" stroke-linecap="round">
         <path d="M72 138 L52 112"/><path d="M128 138 L148 112"/>
       </g>
+      <!-- chignon à baguettes et fleur de lotus -->
+      <g>
+        <path d="M82 4 L118 38 M118 4 L82 38" stroke="#e0b23c" stroke-width="3.2" stroke-linecap="round"/>
+        <circle cx="82" cy="4" r="3.4" fill="#d62839"/><circle cx="118" cy="4" r="3.4" fill="#d62839"/>
+        <circle cx="100" cy="21" r="15" fill="#1f1b26"/>
+        <path d="M90 15 q8 -8 18 -2" fill="none" stroke="#4a4358" stroke-width="2.5" stroke-linecap="round"/>
+        <g transform="translate(113 30)"><ellipse rx="3.2" ry="7" cy="-5" fill="#f7a8c4"/><ellipse rx="3.2" ry="7" cy="-5" fill="#f7a8c4" transform="rotate(72)"/><ellipse rx="3.2" ry="7" cy="-5" fill="#f7a8c4" transform="rotate(144)"/><ellipse rx="3.2" ry="7" cy="-5" fill="#f7a8c4" transform="rotate(216)"/><ellipse rx="3.2" ry="7" cy="-5" fill="#f7a8c4" transform="rotate(288)"/><circle r="2.6" fill="#ffd966"/></g>
+      </g>
       <!-- yeux -->
       <circle cx="66" cy="52" r="27" fill="#5cc04a"/><circle cx="134" cy="52" r="27" fill="#5cc04a"/>
       <circle cx="66" cy="50" r="20" fill="#fff"/><circle cx="134" cy="50" r="20" fill="#fff"/>
       <g id="pupilles"><circle class="pupille" cx="66" cy="50" r="9" fill="#14251a"/><circle class="pupille" cx="134" cy="50" r="9" fill="#14251a"/><circle cx="62" cy="46" r="3" fill="#fff"/><circle cx="130" cy="46" r="3" fill="#fff"/></g>
-      <circle class="paupiere" cx="66" cy="50" r="21" fill="#4bb03d"/><circle class="paupiere" cx="134" cy="50" r="21" fill="#4bb03d"/>
+      <path d="M46.9 44 A20 20 0 0 1 85.1 44 Z" fill="#c774c9"/><path d="M114.9 44 A20 20 0 0 1 153.1 44 Z" fill="#c774c9"/>
+      <g fill="none" stroke="#14251a" stroke-width="2.6" stroke-linecap="round">
+        <path d="M48 42 L39 37 M51 36 L44 28 M57 32 L53 23"/><path d="M152 42 L161 37 M149 36 L156 28 M143 32 L147 23"/>
+        <path d="M46.9 44 L85.1 44 M114.9 44 L153.1 44" stroke-width="2"/>
+      </g>
+      <circle class="paupiere g" cx="66" cy="50" r="21" fill="#c774c9"/><circle class="paupiere d" cx="134" cy="50" r="21" fill="#c774c9"/>
       <!-- museau -->
       <circle cx="91" cy="82" r="2.6" fill="#2f7a2a"/><circle cx="109" cy="82" r="2.6" fill="#2f7a2a"/>
-      <circle cx="50" cy="100" r="9" fill="#ff8fa3" opacity=".55"/><circle cx="150" cy="100" r="9" fill="#ff8fa3" opacity=".55"/>
-      <path class="langue" d="M92 110 q8 26 18 0z" fill="#ff5d7a" stroke="#d93d5c" stroke-width="2"/>
-      <path d="M56 97 Q100 128 144 97" fill="none" stroke="#2f7a2a" stroke-width="4.5" stroke-linecap="round"/>
+      <circle cx="50" cy="100" r="9" fill="#ff9db5" opacity=".85"/><circle cx="150" cy="100" r="9" fill="#ff9db5" opacity=".85"/>
+      <path d="M58 98 Q100 124 142 98" fill="none" stroke="#2f7a2a" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M86 108 q7 -8 14 -2 q7 -6 14 2 q-14 5 -28 0z" fill="#e02752"/><path d="M86 108 q14 13 28 0 q-14 5 -28 0z" fill="#c81d49"/>
+      <circle cx="124" cy="97" r="2.3" fill="#14251a"/>
+      <!-- col rouge à liseré doré -->
+      <path d="M68 125 Q100 143 132 125 L130 134 Q100 152 70 134 Z" fill="#d62839" stroke="#f2c14e" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="100" cy="143" r="3.2" fill="#f2c14e"/><path d="M93 143 h-6 M107 143 h6" stroke="#f2c14e" stroke-width="2.2" stroke-linecap="round"/>
+      <!-- éventail, sorti pour narguer -->
+      <g class="eventail" transform="translate(100 126)">
+        <path d="M0 0 L-39 -20 A44 44 0 0 1 39 -20 Z" fill="#fbe3ea" stroke="#d62839" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M0 0 L-24 -37 M0 0 L-8 -43 M0 0 L8 -43 M0 0 L24 -37" stroke="#d62839" stroke-width="1.6"/>
+        <path d="M-33 -29 A44 44 0 0 1 33 -29" fill="none" stroke="#f2c14e" stroke-width="3"/>
+        <circle r="3.2" fill="#f2c14e"/>
+      </g>
     </svg>
   </div>
   <div id="bulle"></div>
@@ -107,7 +133,7 @@ header p { margin: 4px 0 0; font-size: clamp(14px, 3.6vw, 18px); font-weight: 60
   var W = 0, H = 0, T = 120, TH = 102;            // taille de la grenouille
   var pos = { x: 0, y: 0 }, saut = null, sens = 1, doigt = null, evasions = 0;
   var prochain = 0, atterri = -1e9, finBulle = 0, finNargue = 0, prochainClin = 0, finClin = 0;
-  var MOTS = ['Raté !', 'Trop lent !', 'Coâ ?!', 'Même pas en rêve', 'Hop là !', 'Pas touche !', 'Bien essayé', 'Encore raté', 'Coâ coâ coâ', 'Je glisse !', 'Tu chauffes… non'];
+  var MOTS = ['Raté, chéri !', 'Trop lent, mon chou', 'Pas touche !', 'Dans tes rêves', 'Coâ… quelle audace', 'On regarde, on ne touche pas', 'Encore raté', 'Bien tenté', 'Lisa est trop rapide', 'Hop là !', 'Tu chauffes… non'];
   function alea(a, b) { return a + Math.random() * (b - a); }
   function bornes() { var m = T * 0.6; return { g: m, d: W - m, h: TH + 96, b: H - 22 }; }
   function serrer(p) { var b = bornes(); return { x: Math.min(b.d, Math.max(b.g, p.x)), y: Math.min(b.b, Math.max(b.h, p.y)) }; }
@@ -125,6 +151,11 @@ header p { margin: 4px 0 0; font-size: clamp(14px, 3.6vw, 18px); font-weight: 60
       d.className = 'pad'; d.style.width = d.style.height = s + 'px';
       d.style.left = alea(-20, W - s + 20) + 'px'; d.style.top = alea(70, H - s + 20) + 'px';
       d.style.setProperty('--a', Math.round(alea(0, 360)) + 'deg');
+      if (i % 2 === 0) {
+        var pet = '';
+        for (var k = 0; k < 8; k++) pet += '<ellipse rx="5" ry="13" cy="-9" fill="' + (k % 2 ? '#f7a8c4' : '#fbd0de') + '" transform="rotate(' + k * 45 + ')"/>';
+        d.innerHTML = '<svg viewBox="-24 -24 48 48" aria-hidden="true">' + pet + '<circle r="5" fill="#ffd966"/></svg>';
+      }
       mare.insertBefore(d, ombre);
     }
   }
@@ -138,6 +169,7 @@ header p { margin: 4px 0 0; font-size: clamp(14px, 3.6vw, 18px); font-weight: 60
     if (Math.abs(cible.x - pos.x) > 4) sens = cible.x >= pos.x ? 1 : -1;
     saut = { de: { x: pos.x, y: pos.y }, a: cible, haut: haut, duree: duree, t0: performance.now(), genre: genre };
     g.classList.add('en-l-air'); g.classList.remove('nargue');
+    if (!coasser(genre === 'fuite') && genre === 'fuite') muette = performance.now();
   }
   function fuir(px, py) {
     var now = performance.now();
@@ -156,7 +188,7 @@ header p { margin: 4px 0 0; font-size: clamp(14px, 3.6vw, 18px); font-weight: 60
     bondir(pris, haut, calme ? 260 : 520, 'fuite');
     evasions++; compteur.textContent = 'Évasions : ' + evasions;
     bulle.textContent = MOTS[Math.floor(Math.random() * MOTS.length)]; bulle.classList.add('vue'); finBulle = now + 1100;
-    g.classList.add('peur'); coasser();
+    g.classList.add('peur');
   }
   function onde(x, y, taille) {
     var o = document.createElement('div'); o.className = 'onde';
@@ -209,22 +241,44 @@ header p { margin: 4px 0 0; font-size: clamp(14px, 3.6vw, 18px); font-weight: 60
     if (finClin && now > finClin) { g.classList.remove('clin'); finClin = 0; }
     requestAnimationFrame(image);
   }
-  // son facultatif : un petit coassement synthétique
-  var audio = null, sonActif = false;
-  function coasser() {
-    if (!sonActif) return;
+  // Lisa coasse à chaque saut : un « coâ » doux pour la balade, un « coâ-coâ » sonore pour la fuite.
+  // Les navigateurs n'autorisent le son qu'après un premier toucher.
+  var audio = null, sonActif = true, muette = -1e9; // muette : fuite partie avant que le son soit débloqué
+  function syllabe(t, f, vol, long) {
+    var o = audio.createOscillator(), v = audio.createGain(), lfo = audio.createOscillator(), lg = audio.createGain(), filtre = audio.createBiquadFilter();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 0.45, t + long);
+    filtre.type = 'bandpass'; filtre.frequency.value = 900; filtre.Q.value = 1.1;
+    lfo.frequency.value = 38; lg.gain.value = vol * 0.6; lfo.connect(lg); lg.connect(v.gain);
+    v.gain.setValueAtTime(0.0001, t); v.gain.exponentialRampToValueAtTime(vol, t + 0.03); v.gain.exponentialRampToValueAtTime(0.0001, t + long);
+    o.connect(filtre); filtre.connect(v); v.connect(audio.destination);
+    o.start(t); lfo.start(t); o.stop(t + long + 0.02); lfo.stop(t + long + 0.02);
+  }
+  function coasser(fort) {
+    if (!sonActif || !audio || audio.state !== 'running') return false;
     try {
-      if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
-      var t = audio.currentTime, o = audio.createOscillator(), v = audio.createGain(), lfo = audio.createOscillator(), lg = audio.createGain();
-      o.type = 'sawtooth'; o.frequency.setValueAtTime(alea(210, 260), t); o.frequency.exponentialRampToValueAtTime(95, t + 0.24);
-      lfo.frequency.value = 34; lg.gain.value = 0.5; lfo.connect(lg); lg.connect(v.gain);
-      v.gain.setValueAtTime(0.0001, t); v.gain.exponentialRampToValueAtTime(0.22, t + 0.03); v.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
-      o.connect(v); v.connect(audio.destination); o.start(t); lfo.start(t); o.stop(t + 0.32); lfo.stop(t + 0.32);
+      var t = audio.currentTime + 0.01;
+      if (fort) { syllabe(t, alea(250, 290), 0.5, 0.2); syllabe(t + 0.21, alea(210, 240), 0.5, 0.26); }
+      else syllabe(t, alea(190, 230), 0.22, 0.18);
+      return true;
+    } catch (e) { return false; }
+  }
+  function debloquerSon() {
+    try {
+      if (!sonActif) return;
+      if (navigator.audioSession) { try { navigator.audioSession.type = 'playback'; } catch (e) { } } // joue aussi en mode silencieux
+      if (!audio) {
+        audio = new (window.AudioContext || window.webkitAudioContext)();
+        var vide = audio.createBufferSource(); vide.buffer = audio.createBuffer(1, 1, 22050); vide.connect(audio.destination); vide.start(0);
+      }
+      var rattraper = function () { if (performance.now() - muette < 700) { muette = -1e9; coasser(true); } };
+      if (audio.state !== 'running') audio.resume().then(rattraper).catch(function () { }); else rattraper();
     } catch (e) { }
   }
+  ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'].forEach(function (n) { window.addEventListener(n, debloquerSon, { passive: true }); });
   btnSon.addEventListener('click', function () {
     sonActif = !sonActif; btnSon.setAttribute('aria-pressed', String(sonActif)); btnSon.textContent = sonActif ? 'Son activé' : 'Son coupé';
-    if (sonActif) coasser();
+    if (sonActif) { debloquerSon(); coasser(true); }
+    else if (audio && audio.state === 'running') { audio.suspend().catch(function () { }); }
   });
   function approche(ev, rayon) {
     var r = mare.getBoundingClientRect(), px = ev.clientX - r.left, py = ev.clientY - r.top, c = centre();
