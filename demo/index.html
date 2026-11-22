@@ -241,7 +241,8 @@ header p { margin: 4px 0 0; font-size: clamp(14px, 3.6vw, 18px); font-weight: 60
     if (finClin && now > finClin) { g.classList.remove('clin'); finClin = 0; }
     requestAnimationFrame(image);
   }
-  // Lisa coasse à chaque saut : un « coâ » doux pour la balade, un « coâ-coâ » sonore pour la fuite.
+  // Lisa coasse à chaque saut avec un vrai enregistrement (coa.mp3) : un coassement doux pour la balade,
+  // deux coassements sonores pour la fuite. Si le fichier ne se charge pas, un coassement synthétique prend le relais.
   // Les navigateurs n'autorisent le son qu'après un premier toucher.
   var audio = null, sonActif = true, muette = -1e9; // muette : fuite partie avant que le son soit débloqué
   function syllabe(t, f, vol, long) {
@@ -253,10 +254,31 @@ header p { margin: 4px 0 0; font-size: clamp(14px, 3.6vw, 18px); font-weight: 60
     o.connect(filtre); filtre.connect(v); v.connect(audio.destination);
     o.start(t); lfo.start(t); o.stop(t + long + 0.02); lfo.stop(t + long + 0.02);
   }
+  var brut = null, tampon = null, CROAS = [[0.08, 0.46], [0.94, 1.26], [2.00, 2.36], [3.00, 3.36], [4.20, 4.54]]; // les cinq coassements du fichier, en secondes
+  try { fetch('coa.mp3').then(function (r) { return r.ok ? r.arrayBuffer() : null; }).then(function (b) { brut = b; decoder(); }).catch(function () { }); } catch (e) { }
+  function decoder() {
+    if (!audio || !brut || tampon) return;
+    try { var pr = audio.decodeAudioData(brut.slice(0), function (buf) { tampon = buf; rattraper(); }, function () { brut = null; rattraper(); }); if (pr && pr.catch) pr.catch(function () { }); } catch (e) { brut = null; }
+  }
+  // une fuite partie avant que le son soit prêt est coassée dès qu'il l'est
+  function rattraper() { if (performance.now() - muette < 700 && coasser(true)) muette = -1e9; }
+  function croa(t, vol, vitesse) {
+    var seg = CROAS[Math.floor(Math.random() * CROAS.length)], d = seg[1] - seg[0], long = d / vitesse, src = audio.createBufferSource(), v = audio.createGain();
+    src.buffer = tampon; src.playbackRate.value = vitesse;
+    v.gain.setValueAtTime(0.0001, t); v.gain.linearRampToValueAtTime(vol, t + 0.02); v.gain.setValueAtTime(vol, t + long - 0.06); v.gain.linearRampToValueAtTime(0.0001, t + long);
+    src.connect(v); v.connect(audio.destination); src.start(t, seg[0], d);
+    return long;
+  }
   function coasser(fort) {
     if (!sonActif || !audio || audio.state !== 'running') return false;
     try {
       var t = audio.currentTime + 0.01;
+      if (tampon) {
+        if (fort) { var l1 = croa(t, 1, alea(0.98, 1.06)); croa(t + l1 + 0.03, 1, alea(0.94, 1.02)); }
+        else croa(t, 0.5, alea(0.95, 1.08));
+        return true;
+      }
+      if (brut) return false; // enregistrement en cours de décodage : on attend plutôt que de jouer le son synthétique
       if (fort) { syllabe(t, alea(250, 290), 0.5, 0.2); syllabe(t + 0.21, alea(210, 240), 0.5, 0.26); }
       else syllabe(t, alea(190, 230), 0.22, 0.18);
       return true;
@@ -270,7 +292,7 @@ header p { margin: 4px 0 0; font-size: clamp(14px, 3.6vw, 18px); font-weight: 60
         audio = new (window.AudioContext || window.webkitAudioContext)();
         var vide = audio.createBufferSource(); vide.buffer = audio.createBuffer(1, 1, 22050); vide.connect(audio.destination); vide.start(0);
       }
-      var rattraper = function () { if (performance.now() - muette < 700) { muette = -1e9; coasser(true); } };
+      decoder();
       if (audio.state !== 'running') audio.resume().then(rattraper).catch(function () { }); else rattraper();
     } catch (e) { }
   }
