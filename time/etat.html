@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="logo.gif">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=3">
+<title>Équipe · GIOT OptimalGo</title>
+</head>
+<body>
+<div class="board" id="app"></div>
+<noscript>Cette page a besoin de JavaScript.</noscript>
+<script src="engine.js?v=3"></script>
+<script src="commun.js?v=3"></script>
+<script>
+/* Tableau d'équipe public : qui est disponible, sur quel dossier. Lecture seule, rafraîchi toutes les 15 secondes. */
+(function () {
+  'use strict';
+  var E = window.Engine, root = document.getElementById('app'), data = null, err = false, skew = 0;
+  function now() { return Date.now() + (Math.abs(skew) > 120000 ? skew : 0); }
+  function depuis(ts, t) {
+    if (!ts) return '';
+    return E.dayKey(ts) === E.dayKey(t) ? 'depuis ' + E.hhmm(ts) : 'depuis ' + E.frDate(E.dayKey(ts)).replace(/\.\d{4}$/, '.') + ' ' + E.hhmm(ts);
+  }
+  function render() {
+    var t = now(), h = '<header><h1>Équipe</h1><span class="when">' + E.frDate(E.dayKey(t)) + ' · ' + E.hhmm(t) + '</span>' + window.LOGO + '</header>';
+    if (!data) { root.innerHTML = h + '<div class="mute">' + (err ? 'Serveur injoignable. Nouvel essai automatique.' : 'Chargement…') + '</div>'; return; }
+    if (err) h += '<div class="note warn">Connexion perdue : l’affichage peut ne plus être à jour.</div>';
+    var cnt = { bureau: 0, mission: 0, pause: 0, absent: 0 };
+    data.people.forEach(function (p) { cnt[p.code]++; });
+    h += '<div class="counts">' + ['bureau', 'mission', 'pause', 'absent'].map(function (c) {
+      return '<span class="chip st-' + c + '"><i></i>' + cnt[c] + ' ' + { bureau: 'au bureau', mission: 'en déplacement', pause: 'en pause', absent: 'absent' + (cnt[c] > 1 ? 's' : '') }[c] + '</span>';
+    }).join('') + '</div>';
+    if (!data.people.length) h += '<div class="note">Aucun employé n’est encore enregistré. <a href="admin.html">Ouvrir l’administration</a></div>';
+    h += '<div class="bgrid">';
+    data.people.forEach(function (p) {
+      var travail = p.code === 'bureau' || p.code === 'mission', oubli = travail && p.since && t - p.since > 11 * E.H;
+      h += '<div class="btile st-' + p.code + '"><div class="p">' + esc(p.prenom) + '</div><div class="n">' + esc(p.nom) + '</div>' +
+        '<div class="l">' + ic(p.code) + window.LIB[p.code] + '</div>' +
+        (travail && p.dossier ? '<div class="d">' + esc(p.dossier) + '</div>' : '') +
+        '<div class="s">' + (oubli ? 'Fin de journée oubliée ? · ' : '') + depuis(p.since, t) + '</div></div>';
+    });
+    h += '</div><footer><span>Mise à jour automatique toutes les 15 secondes. Le statut est celui du dernier pointage reçu.</span>' +
+      '<button class="btn ghost sm" id="plein">Plein écran</button><a href="index.html">Pointer</a><a href="admin.html">Administration</a></footer>';
+    root.innerHTML = h;
+  }
+  function load() {
+    var sent = Date.now();
+    window.api('etat').then(function (r) { data = r; err = false; skew = r.now - (sent + Date.now()) / 2; }, function () { err = true; }).then(render);
+  }
+  root.addEventListener('click', function (ev) {
+    if (ev.target.id !== 'plein') return;
+    try { var p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(function () { }); } catch (e) { }
+  });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) load(); });
+  setInterval(load, 15000);
+  setInterval(function () { if (data) render(); }, 60000);
+  render(); load();
+})();
+</script>
+</body>
+</html>
