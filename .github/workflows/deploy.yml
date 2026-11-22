@@ -1,24 +1,48 @@
-name: Publier sur le-top.ch/time
+name: Publier sur le-top.ch
+
+# Chaque dossier à la racine du dépôt est publié dans /web/<dossier>/,
+# soit www.le-top.ch/<dossier>/. La racine /web elle-même n'est jamais touchée.
 
 on:
   push:
     branches: [main]
-    paths:
-      - 'site/**'
-      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
+concurrency:
+  group: publication
+  cancel-in-progress: false
+
 jobs:
-  publier:
+  lister:
     runs-on: ubuntu-latest
+    outputs:
+      dossiers: ${{ steps.liste.outputs.dossiers }}
     steps:
       - uses: actions/checkout@v5
-      - name: Envoi FTP vers /web/time/
+      - id: liste
+        name: Lister les dossiers à publier
+        run: |
+          dossiers=$(find . -mindepth 1 -maxdepth 1 -type d -not -name '.*' -printf '%f\n' | { grep -E '^[A-Za-z0-9._-]+$' || true; } | sort | jq -R . | jq -sc .)
+          echo "dossiers=$dossiers" >> "$GITHUB_OUTPUT"
+          echo "Dossiers publiés : $dossiers"
+
+  publier:
+    needs: lister
+    if: needs.lister.outputs.dossiers != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        dossier: ${{ fromJson(needs.lister.outputs.dossiers) }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Envoi FTP vers /web/${{ matrix.dossier }}/
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftps
-          local-dir: ./site/
-          server-dir: /web/time/
+          local-dir: ./${{ matrix.dossier }}/
+          server-dir: /web/${{ matrix.dossier }}/
