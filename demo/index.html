@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>La grenouille</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Une mare vue de dessus : eau sombre, nénuphars, une grenouille vert vif qui ressort. */
+  --eau: #0c5a60; --eau-fond: #073c43; --nenuphar: #2c8a4c; --nenuphar-bord: #1f6e3b;
+  --texte: #eafff4; --bulle: #fffdf2; --encre: #173b22;
+  --f: 'Baloo 2', 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; margin: 0; overflow: hidden; }
+body { background: radial-gradient(120% 90% at 50% 35%, var(--eau) 0%, var(--eau-fond) 100%); color: var(--texte); font-family: var(--f); -webkit-user-select: none; user-select: none; }
+#mare { position: fixed; inset: 0; overflow: hidden; touch-action: none; cursor: crosshair; }
+.pad { position: absolute; border-radius: 50%; background: conic-gradient(from var(--a), var(--nenuphar) 0 322deg, transparent 322deg); box-shadow: inset 0 0 0 3px var(--nenuphar-bord); opacity: .8; }
+.pad::after { content: ''; position: absolute; inset: 22%; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, .13), transparent 70%); }
+header { position: absolute; left: 0; right: 0; top: 0; padding: calc(12px + env(safe-area-inset-top)) 16px 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; pointer-events: none; z-index: 5; }
+h1 { margin: 0; font-size: clamp(24px, 6vw, 38px); line-height: 1; font-weight: 800; text-wrap: balance; }
+header p { margin: 4px 0 0; font-size: clamp(14px, 3.6vw, 18px); font-weight: 600; opacity: .85; }
+.droite { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+#compteur { font-size: clamp(15px, 3.8vw, 19px); font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+#son { pointer-events: auto; font: 600 14px var(--f); color: var(--texte); background: rgba(255, 255, 255, .12); border: 1.5px solid rgba(255, 255, 255, .35); border-radius: 999px; padding: 6px 14px; min-height: 36px; cursor: pointer; }
+#son[aria-pressed="true"] { background: var(--texte); color: var(--eau-fond); }
+#son:focus-visible { outline: 3px solid #ffe36e; outline-offset: 2px; }
+#ombre { position: absolute; left: 0; top: 0; border-radius: 50%; background: rgba(0, 0, 0, .32); will-change: transform, opacity; }
+#grenouille { position: absolute; left: 0; top: 0; transform-origin: 50% 100%; will-change: transform; pointer-events: none; z-index: 3; }
+#grenouille svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.saut { display: none; }
+.en-l-air .saut { display: block; }
+.en-l-air .assis { display: none; }
+.paupiere { transform: scaleY(0); transform-box: fill-box; transform-origin: 50% 0; transition: transform .07s linear; }
+.clin .paupiere { transform: scaleY(1); }
+.langue { display: none; }
+.nargue .langue { display: block; }
+.peur .pupille { r: 5; }
+#bulle { position: absolute; left: 0; top: 0; background: var(--bulle); color: var(--encre); font-weight: 800; font-size: clamp(16px, 4.4vw, 22px); line-height: 1; padding: 9px 14px 7px; border-radius: 16px; white-space: nowrap; opacity: 0; transition: opacity .15s; z-index: 4; pointer-events: none; }
+#bulle.vue { opacity: 1; }
+#bulle::after { content: ''; position: absolute; left: 50%; bottom: -7px; width: 14px; height: 14px; background: var(--bulle); transform: translateX(-50%) rotate(45deg); border-radius: 2px; }
+.onde { position: absolute; border: 3px solid rgba(255, 255, 255, .55); border-radius: 50%; pointer-events: none; animation: onde .8s ease-out forwards; }
+@keyframes onde { from { transform: translate(-50%, -50%) scale(.3); opacity: .9; } to { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .onde { animation-duration: .01s; } }
+</style>
+</head>
+<body>
+<div id="mare">
+  <header>
+    <div><h1>La grenouille</h1><p>Essaie de la toucher.</p></div>
+    <div class="droite"><div id="compteur" aria-live="polite">Évasions : 0</div><button id="son" type="button" aria-pressed="false">Son coupé</button></div>
+  </header>
+  <div id="ombre"></div>
+  <div id="grenouille" aria-label="Une grenouille qui se promène" role="img">
+    <svg viewBox="0 0 200 170" aria-hidden="true">
+      <!-- pattes arrière, au repos -->
+      <g class="assis">
+        <ellipse cx="42" cy="128" rx="34" ry="23" transform="rotate(-24 42 128)" fill="#46a83a"/>
+        <ellipse cx="158" cy="128" rx="34" ry="23" transform="rotate(24 158 128)" fill="#46a83a"/>
+        <path d="M14 158 q14 -12 40 -4 l-4 9 q-20 4 -40 2z" fill="#3f9a35"/>
+        <path d="M186 158 q-14 -12 -40 -4 l4 9 q20 4 40 2z" fill="#3f9a35"/>
+      </g>
+      <!-- pattes arrière, tendues en plein bond -->
+      <g class="saut" fill="none" stroke="#46a83a" stroke-width="17" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M58 132 L30 160 L4 176"/>
+        <path d="M142 132 L170 160 L196 176"/>
+        <path d="M4 176 l-12 6 M4 176 l-4 13 M4 176 l8 12" stroke-width="7" stroke="#3f9a35"/>
+        <path d="M196 176 l12 6 M196 176 l4 13 M196 176 l-8 12" stroke-width="7" stroke="#3f9a35"/>
+      </g>
+      <!-- corps -->
+      <ellipse cx="100" cy="106" rx="63" ry="53" fill="#5cc04a"/>
+      <ellipse cx="100" cy="124" rx="41" ry="31" fill="#e6f5b0"/>
+      <circle cx="74" cy="92" r="7" fill="#4bb03d" opacity=".7"/><circle cx="131" cy="108" r="5" fill="#4bb03d" opacity=".7"/>
+      <!-- pattes avant -->
+      <g class="assis" fill="#3f9a35">
+        <path d="M66 160 q10 -14 24 -2 q-2 8 -12 8 q-10 0 -12 -6z"/>
+        <path d="M134 160 q-10 -14 -24 -2 q2 8 12 8 q10 0 12 -6z"/>
+      </g>
+      <g class="saut" fill="none" stroke="#46a83a" stroke-width="12" stroke-linecap="round">
+        <path d="M72 138 L52 112"/><path d="M128 138 L148 112"/>
+      </g>
+      <!-- yeux -->
+      <circle cx="66" cy="52" r="27" fill="#5cc04a"/><circle cx="134" cy="52" r="27" fill="#5cc04a"/>
+      <circle cx="66" cy="50" r="20" fill="#fff"/><circle cx="134" cy="50" r="20" fill="#fff"/>
+      <g id="pupilles"><circle class="pupille" cx="66" cy="50" r="9" fill="#14251a"/><circle class="pupille" cx="134" cy="50" r="9" fill="#14251a"/><circle cx="62" cy="46" r="3" fill="#fff"/><circle cx="130" cy="46" r="3" fill="#fff"/></g>
+      <circle class="paupiere" cx="66" cy="50" r="21" fill="#4bb03d"/><circle class="paupiere" cx="134" cy="50" r="21" fill="#4bb03d"/>
+      <!-- museau -->
+      <circle cx="91" cy="82" r="2.6" fill="#2f7a2a"/><circle cx="109" cy="82" r="2.6" fill="#2f7a2a"/>
+      <circle cx="50" cy="100" r="9" fill="#ff8fa3" opacity=".55"/><circle cx="150" cy="100" r="9" fill="#ff8fa3" opacity=".55"/>
+      <path class="langue" d="M92 110 q8 26 18 0z" fill="#ff5d7a" stroke="#d93d5c" stroke-width="2"/>
+      <path d="M56 97 Q100 128 144 97" fill="none" stroke="#2f7a2a" stroke-width="4.5" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div id="bulle"></div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var mare = document.getElementById('mare'), g = document.getElementById('grenouille'), ombre = document.getElementById('ombre'),
+    bulle = document.getElementById('bulle'), compteur = document.getElementById('compteur'), pupilles = document.getElementById('pupilles'), btnSon = document.getElementById('son');
+  var calme = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var W = 0, H = 0, T = 120, TH = 102;            // taille de la grenouille
+  var pos = { x: 0, y: 0 }, saut = null, sens = 1, doigt = null, evasions = 0;
+  var prochain = 0, atterri = -1e9, finBulle = 0, finNargue = 0, prochainClin = 0, finClin = 0;
+  var MOTS = ['Raté !', 'Trop lent !', 'Coâ ?!', 'Même pas en rêve', 'Hop là !', 'Pas touche !', 'Bien essayé', 'Encore raté', 'Coâ coâ coâ', 'Je glisse !', 'Tu chauffes… non'];
+  function alea(a, b) { return a + Math.random() * (b - a); }
+  function bornes() { var m = T * 0.6; return { g: m, d: W - m, h: TH + 96, b: H - 22 }; }
+  function serrer(p) { var b = bornes(); return { x: Math.min(b.d, Math.max(b.g, p.x)), y: Math.min(b.b, Math.max(b.h, p.y)) }; }
+  function mesurer() {
+    W = mare.clientWidth; H = mare.clientHeight;
+    T = Math.max(92, Math.min(150, Math.min(W, H) * 0.3)); TH = T * 0.85;
+    g.style.width = T + 'px'; g.style.height = TH + 'px';
+    ombre.style.width = T * 0.8 + 'px'; ombre.style.height = T * 0.2 + 'px';
+    pos = serrer(pos);
+  }
+  function nenuphars() {
+    var n = Math.round(Math.max(5, Math.min(11, W * H / 70000)));
+    for (var i = 0; i < n; i++) {
+      var d = document.createElement('div'), s = alea(60, 150);
+      d.className = 'pad'; d.style.width = d.style.height = s + 'px';
+      d.style.left = alea(-20, W - s + 20) + 'px'; d.style.top = alea(70, H - s + 20) + 'px';
+      d.style.setProperty('--a', Math.round(alea(0, 360)) + 'deg');
+      mare.insertBefore(d, ombre);
+    }
+  }
+  function centre() { // centre du corps, bond compris
+    var l = 0;
+    if (saut) { var t = Math.min(1, (performance.now() - saut.t0) / saut.duree); l = 4 * saut.haut * t * (1 - t); }
+    return { x: pos.x, y: pos.y - TH * 0.45 - l };
+  }
+  function bondir(cible, haut, duree, genre) {
+    cible = serrer(cible);
+    if (Math.abs(cible.x - pos.x) > 4) sens = cible.x >= pos.x ? 1 : -1;
+    saut = { de: { x: pos.x, y: pos.y }, a: cible, haut: haut, duree: duree, t0: performance.now(), genre: genre };
+    g.classList.add('en-l-air'); g.classList.remove('nargue');
+  }
+  function fuir(px, py) {
+    var now = performance.now();
+    if (saut && saut.genre === 'fuite' && now - saut.t0 < saut.duree * 0.9) return; // déjà en fuite
+    // douze directions possibles : elle choisit parmi celles qui l'éloignent le plus du doigt
+    var portee = Math.max(230, Math.min(W, H) * alea(0.5, 0.75)), choix = [];
+    for (var i = 0; i < 12; i++) {
+      var a = i * Math.PI / 6 + alea(-0.2, 0.2), c = serrer({ x: pos.x + Math.cos(a) * portee, y: pos.y + Math.sin(a) * portee });
+      var loin = Math.hypot(c.x - px, c.y - TH * 0.45 - py), trajet = Math.hypot(c.x - pos.x, c.y - pos.y);
+      choix.push({ c: c, note: loin + Math.min(trajet, 260) * 0.6 });
+    }
+    choix.sort(function (u, v) { return v.note - u.note; });
+    var pris = choix[Math.floor(Math.random() * 3)].c;
+    // le sommet du bond reste dans l'écran
+    var haut = Math.max(40, Math.min(H * 0.32, 230, (pos.y + pris.y) / 2 - TH - 64));
+    bondir(pris, haut, calme ? 260 : 520, 'fuite');
+    evasions++; compteur.textContent = 'Évasions : ' + evasions;
+    bulle.textContent = MOTS[Math.floor(Math.random() * MOTS.length)]; bulle.classList.add('vue'); finBulle = now + 1100;
+    g.classList.add('peur'); coasser();
+  }
+  function onde(x, y, taille) {
+    var o = document.createElement('div'); o.className = 'onde';
+    o.style.left = x + 'px'; o.style.top = y + 'px'; o.style.width = taille + 'px'; o.style.height = taille * 0.45 + 'px';
+    mare.insertBefore(o, ombre); setTimeout(function () { o.remove(); }, 850);
+  }
+  function image(now) {
+    var x = pos.x, y = pos.y, leve = 0, sx = 1, sy = 1;
+    if (saut) {
+      var t = (now - saut.t0) / saut.duree;
+      if (t >= 1) {
+        pos = { x: saut.a.x, y: saut.a.y }; x = pos.x; y = pos.y;
+        g.classList.remove('en-l-air', 'peur'); atterri = now;
+        onde(x, y, saut.genre === 'fuite' ? T * 1.5 : T * 0.9);
+        if (saut.genre === 'fuite') { g.classList.add('nargue'); finNargue = now + 900; prochain = now + alea(1400, 2400); }
+        saut = null;
+      } else {
+        var e = saut.genre === 'fuite' ? 1 - Math.pow(1 - t, 2) : t * t * (3 - 2 * t);
+        x = saut.de.x + (saut.a.x - saut.de.x) * e; y = saut.de.y + (saut.a.y - saut.de.y) * e;
+        leve = 4 * saut.haut * t * (1 - t);
+        var s = Math.sin(Math.PI * t); sy = 1 + 0.2 * s; sx = 1 - 0.09 * s;
+      }
+    }
+    if (!saut) {
+      var u = (now - atterri) / 190;
+      if (u < 1) { sy = 1 - 0.2 * (1 - u); sx = 1 + 0.15 * (1 - u); }          // écrasement à l'atterrissage
+      else { var r = Math.sin(now / 420) * 0.025; sy = 1 + r; sx = 1 - r * 0.6; } // respiration
+      if (!calme && now > prochain) {                                           // petite promenade tranquille
+        var a = alea(0, Math.PI * 2), d = alea(45, 105);
+        bondir({ x: pos.x + Math.cos(a) * d, y: pos.y + Math.sin(a) * d * 0.7 }, alea(20, 34), alea(560, 700), 'balade');
+        prochain = now + alea(1500, 3600);
+      }
+    }
+    g.style.transform = 'translate(' + (x - T / 2) + 'px,' + (y - TH - leve) + 'px) scale(' + (sens * sx) + ',' + sy + ')';
+    var k = Math.max(0.35, 1 - leve / 420);
+    ombre.style.transform = 'translate(' + (x - T * 0.4) + 'px,' + (y - T * 0.1) + 'px) scale(' + k + ')';
+    ombre.style.opacity = String(0.25 + 0.75 * k);
+    // les yeux suivent le doigt
+    var dx = 0, dy = 0;
+    if (doigt) { var vx = doigt.x - x, vy = doigt.y - (y - TH * 0.7 - leve), n = Math.hypot(vx, vy) || 1, m = Math.min(8, n / 14); dx = vx / n * m * sens; dy = vy / n * m; }
+    pupilles.setAttribute('transform', 'translate(' + dx.toFixed(1) + ' ' + dy.toFixed(1) + ')');
+    // bulle, langue, clin d'œil
+    if (bulle.classList.contains('vue')) {
+      var bw = bulle.offsetWidth, bx = Math.min(W - bw - 8, Math.max(8, x - bw / 2));
+      bulle.style.transform = 'translate(' + bx + 'px,' + Math.max(8, y - TH - leve - 52) + 'px)';
+      if (now > finBulle) bulle.classList.remove('vue');
+    }
+    if (finNargue && now > finNargue) { g.classList.remove('nargue'); finNargue = 0; }
+    if (now > prochainClin) { g.classList.add('clin'); finClin = now + 140; prochainClin = now + alea(2200, 5200); }
+    if (finClin && now > finClin) { g.classList.remove('clin'); finClin = 0; }
+    requestAnimationFrame(image);
+  }
+  // son facultatif : un petit coassement synthétique
+  var audio = null, sonActif = false;
+  function coasser() {
+    if (!sonActif) return;
+    try {
+      if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+      var t = audio.currentTime, o = audio.createOscillator(), v = audio.createGain(), lfo = audio.createOscillator(), lg = audio.createGain();
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(alea(210, 260), t); o.frequency.exponentialRampToValueAtTime(95, t + 0.24);
+      lfo.frequency.value = 34; lg.gain.value = 0.5; lfo.connect(lg); lg.connect(v.gain);
+      v.gain.setValueAtTime(0.0001, t); v.gain.exponentialRampToValueAtTime(0.22, t + 0.03); v.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+      o.connect(v); v.connect(audio.destination); o.start(t); lfo.start(t); o.stop(t + 0.32); lfo.stop(t + 0.32);
+    } catch (e) { }
+  }
+  btnSon.addEventListener('click', function () {
+    sonActif = !sonActif; btnSon.setAttribute('aria-pressed', String(sonActif)); btnSon.textContent = sonActif ? 'Son activé' : 'Son coupé';
+    if (sonActif) coasser();
+  });
+  function approche(ev, rayon) {
+    var r = mare.getBoundingClientRect(), px = ev.clientX - r.left, py = ev.clientY - r.top, c = centre();
+    doigt = { x: px, y: py };
+    if (Math.hypot(px - c.x, py - c.y) < T * rayon) fuir(px, py);
+  }
+  mare.addEventListener('pointerdown', function (ev) { if (ev.target === btnSon) return; approche(ev, 1.25); });
+  mare.addEventListener('pointermove', function (ev) { approche(ev, 0.95); });
+  mare.addEventListener('pointerleave', function () { doigt = null; });
+  window.addEventListener('resize', mesurer);
+  mesurer(); pos = serrer({ x: W * 0.5, y: H * 0.62 }); nenuphars();
+  prochain = performance.now() + 900; prochainClin = performance.now() + 1500;
+  requestAnimationFrame(image);
+})();
+</script>
+</body>
+</html>
