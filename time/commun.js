@@ -22,7 +22,7 @@
   };
   G.ic = function (n) { return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + IC[n] + '</svg>'; };
   // Logo sans fond : lettres GIOT rouges + chat animé. Toucher le chat ouvre l'administration (protégée par mot de passe).
-  G.LOGO = '<span class="logo"><img src="giot.png?v=5" alt="GIOT" width="224" height="82">' +
-    '<a class="chat" href="admin.html" aria-label="Administration"><img src="chat.png?v=5" alt="" width="76" height="82"></a></span>';
+  G.LOGO = '<span class="logo"><img src="giot.png?v=6" alt="GIOT" width="224" height="82">' +
+    '<a class="chat" href="admin.html" aria-label="Administration"><img src="chat.png?v=6" alt="" width="76" height="82"></a></span>';
   G.LIB = { bureau: 'Au bureau', mission: 'En déplacement', pause: 'En pause', absent: 'Absent' };
 })(window);

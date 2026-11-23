@@ -13,7 +13,7 @@ Dépôt de publication vers www.le-top.ch.
   - Logo : `giot.png` (lettres rouges, sans fond) + `chat.png` (chat animé, sans fond), produits depuis `logo.gif` par `logo.py` (racine du dépôt, non publié). Sur toutes les pages, toucher le chat ouvre l'administration.
   - `api.php` : stockage côté serveur dans `/web/time/data/`, créé par le serveur. Ce dossier n'est jamais dans le dépôt et le déploiement n'y touche pas.
   - Aucune donnée réelle (noms, dossiers, mots de passe) n'est dans ce dépôt public : tout se saisit dans l'administration.
-  - Mot de passe d'administration perdu : effacer `/web/time/data/cfg.php` par FTP remet l'administration à zéro (employés et dossiers à ressaisir, pointages conservés).
+  - Mot de passe d'administration perdu : bouton « Mot de passe oublié » de la page de connexion. Le serveur envoie un mot de passe provisoire (valable 30 minutes) à l'adresse fixée dans `api.php` (`MAIL_ADMIN`) ; on se connecte avec, puis on choisit le nouveau. Le mot de passe en place reste valable tant qu'il n'est pas remplacé. En dernier recours, `reinit.php` (posé par le dépôt, appliqué une seule fois) impose un mot de passe ; à retirer avant la mise en service, de même que `PW_MIN` est à remonter à 8.
 - Les fichiers posés à la racine du dépôt (comme ce README) ne sont pas publiés ; la racine `/web` du site n'est jamais touchée.
 - Noms de dossier acceptés : lettres, chiffres, point, tiret, tiret bas. Les dossiers commençant par un point sont ignorés.
 - Supprimer un dossier du dépôt ne le supprime pas du site.

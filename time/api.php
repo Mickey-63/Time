@@ -16,6 +16,9 @@ define('GUARD', "<?php http_response_code(403); exit; ?>\n");
 define('NOW', (int) floor(microtime(true) * 1000));
 define('JOUR', 86400000);
 define('JSONF', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+define('MAIL_ADMIN', 'ngiot@giot.ch'); // reçoit le mot de passe provisoire (« Mot de passe oublié »)
+define('PW_MIN', 6);                   // longueur minimale pendant le développement ; à remonter à 8 avant la mise en service
+define('TMP_TTL', 30 * 60000);         // durée de vie du mot de passe provisoire
 
 function out($data, int $code = 200): void { http_response_code($code); echo json_encode($data, JSONF); exit; }
 function fail(string $msg, int $code = 400): void { out(['err' => $msg], $code); }
@@ -127,6 +130,9 @@ function sessDrop(string $who, string $keepToken = ''): void {
   foreach ($s as $k => $v) if (($v['who'] ?? '') === $who && $k !== $keep) unset($s[$k]);
   wr('sess', $s);
 }
+function tmpOk(array $c, string $p): bool {
+  return !empty($c['tmpHash']) && ($c['tmpExp'] ?? 0) > NOW && password_verify($p, (string) $c['tmpHash']);
+}
 function needAdmin(array $in): void { if (sessWho($in) !== 'admin') fail('Session expirée. Reconnectez-vous.', 401); }
 function needEmp(array $in): string {
   $w = sessWho($in);
@@ -168,6 +174,7 @@ function reinit(): void {
   if (($c['reinit'] ?? '') === $r['id']) return;
   $c['adminHash'] = $r['hash'];
   $c['reinit'] = (string) $r['id'];
+  unset($c['tmpHash'], $c['tmpExp']);
   wr('cfg', $c);
   sessDrop('admin');
   $t = rd('tries', []); // lève aussi le blocage « trop d'essais »
@@ -326,7 +333,7 @@ switch ($a) {
     $c = cfg();
     if ($c['adminHash'] !== '') fail('Le mot de passe est déjà défini.', 403);
     $p = (string) ($in['password'] ?? '');
-    if (strlen($p) < 8) fail('Le mot de passe doit compter au moins 8 caractères.');
+    if (strlen($p) < PW_MIN) fail('Le mot de passe doit compter au moins ' . PW_MIN . ' caractères.');
     $c['adminHash'] = password_hash($p, PASSWORD_DEFAULT);
     wr('cfg', $c);
     out(['token' => sessNew('admin', JOUR / 2)]);
@@ -337,19 +344,53 @@ switch ($a) {
     triesCheck($key);
     $c = cfg();
     if ($c['adminHash'] === '') fail('Aucun mot de passe défini.', 409);
-    if (!password_verify((string) ($in['password'] ?? ''), $c['adminHash'])) { triesFail($key); fail('Mot de passe incorrect.', 401); }
+    $p = (string) ($in['password'] ?? '');
+    $prov = false;
+    if (!password_verify($p, $c['adminHash'])) {
+      $prov = tmpOk($c, $p); // mot de passe provisoire reçu par e-mail
+      if (!$prov) { triesFail($key); fail('Mot de passe incorrect.', 401); }
+    }
     triesClear($key);
-    out(['token' => sessNew('admin', JOUR / 2)]);
+    out(['token' => sessNew('admin', JOUR / 2), 'provisoire' => $prov]);
+  }
+
+  /* Mot de passe oublié : un mot de passe provisoire part par e-mail à l'adresse fixe MAIL_ADMIN.
+     Le mot de passe actuel reste valable tant qu'un nouveau n'a pas été choisi : personne ne peut bloquer l'accès en cliquant ici. */
+  case 'aoubli': {
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') fail('Action inconnue.', 404);
+    lock();
+    $c = cfg();
+    if ($c['adminHash'] === '') fail('Aucun mot de passe défini.', 409);
+    if (NOW - (int) ($c['tmpAt'] ?? 0) < 5 * 60000) fail('Un e-mail vient d’être envoyé. Patientez 5 minutes avant d’en redemander un.', 429);
+    $abc = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    $tmp = '';
+    for ($i = 0; $i < 10; $i++) $tmp .= $abc[random_int(0, strlen($abc) - 1)];
+    $host = strtolower((string) preg_replace('/^www\\.|:\\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')));
+    if (!preg_match('/^[a-z0-9.-]+\\.[a-z]{2,}$/', $host)) $host = 'le-top.ch';
+    $corps = "Mot de passe provisoire pour l'administration du pointage :\r\n\r\n    " . $tmp . "\r\n\r\n"
+      . "Il est valable 30 minutes. Ouvrez l'administration (touchez le chat du logo), connectez-vous avec ce mot de passe, puis choisissez-en un nouveau.\r\n\r\n"
+      . "Si vous n'avez rien demandé, ignorez ce message : le mot de passe actuel reste valable.\r\n";
+    $tetes = 'From: Pointage GIOT <noreply@' . $host . ">\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit";
+    $ok = function_exists('mail') && @mail(MAIL_ADMIN, '=?UTF-8?B?' . base64_encode('Pointage GIOT : mot de passe provisoire') . '?=', $corps, $tetes);
+    if (!$ok) fail('Le serveur n’a pas pu envoyer l’e-mail.', 500);
+    $c['tmpHash'] = password_hash($tmp, PASSWORD_DEFAULT);
+    $c['tmpExp'] = NOW + TMP_TTL;
+    $c['tmpAt'] = NOW;
+    wr('cfg', $c);
+    [$u, $d] = explode('@', MAIL_ADMIN);
+    out(['ok' => true, 'a' => substr($u, 0, 1) . '…@' . $d]);
   }
 
   case 'apass': {
     needAdmin($in);
     lock();
     $c = cfg();
-    if (!password_verify((string) ($in['old'] ?? ''), $c['adminHash'])) fail('Mot de passe actuel incorrect.', 403);
+    $old = (string) ($in['old'] ?? '');
+    if (!password_verify($old, $c['adminHash']) && !tmpOk($c, $old)) fail('Mot de passe actuel incorrect.', 403);
     $p = (string) ($in['new'] ?? '');
-    if (strlen($p) < 8) fail('Le nouveau mot de passe doit compter au moins 8 caractères.');
+    if (strlen($p) < PW_MIN) fail('Le nouveau mot de passe doit compter au moins ' . PW_MIN . ' caractères.');
     $c['adminHash'] = password_hash($p, PASSWORD_DEFAULT);
+    unset($c['tmpHash'], $c['tmpExp']); // le provisoire ne sert qu'une fois
     wr('cfg', $c);
     sessDrop('admin', (string) $in['token']);
     out(['ok' => true]);

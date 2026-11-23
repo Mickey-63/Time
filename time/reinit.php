@@ -1,4 +1,4 @@
 <?php
-/* Réinitialisation du mot de passe d'administration demandée le 24.11.2026 : empreinte d'un mot de passe provisoire.
-   Appliquée une seule fois par le serveur (voir reinit() dans api.php). À retirer une fois le nouveau mot de passe choisi. */
-return ['id' => 'r-2026-11-24', 'hash' => '$2y$10$zd0TWBJZkQbMwKevqt8a/e0KnZS/H1f5rrrDcNjpF8QyHq0ZX52du'];
+/* Mot de passe d'administration de la phase de développement, posé à la demande de la propriétaire le 24.11.2026.
+   Appliqué une seule fois par le serveur (voir reinit() dans api.php). À retirer avant la mise en service. */
+return ['id' => 'r-2026-11-24b', 'hash' => '$2y$10$ku6gUtY7V4Sk0Gqk39fLk.9zQmQRq8/01dCtORyrbUuy8Vj8TG5Oe'];

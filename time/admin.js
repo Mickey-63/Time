@@ -7,7 +7,8 @@
   var KEY = 'pointage-admin';
   var token = '';
   try { token = sessionStorage.getItem(KEY) || ''; } catch (e) { }
-  var pret = null, cfg = null, tab = 'employes', sheet = null, err = '', busy = false, flash = '', loadErr = false;
+  var pret = null, cfg = null, tab = 'employes', sheet = null, err = '', busy = false, flash = '', loadErr = false, prov = '', info = '';
+  var PW_MIN = 6;
   var today = E.dayKey(Date.now());
   var ex = { from: today.slice(0, 8) + '01', to: today, pid: '', soc: '' }, exMsg = '', exErr = '';
 
@@ -40,7 +41,7 @@
     var h = head('Pointage GIOT Immobilier SA et OptimalGo SA') + '<main id="main">';
     if (pret === null) return h + '<div class="mute">' + (loadErr ? 'Serveur injoignable.' : 'Chargement…') + '</div>' + (loadErr ? '<button class="btn" data-act="retry">Réessayer</button>' : '') + '</main>';
     if (!pret) {
-      h += '<div class="card"><h3>Créer le mot de passe d’administration</h3><div class="mute">Première ouverture : ce mot de passe protège les employés, les centres analytiques et les exports. Il n’est enregistré que sur votre serveur. Au moins 8 caractères.</div>' +
+      h += '<div class="card"><h3>Créer le mot de passe d’administration</h3><div class="mute">Première ouverture : ce mot de passe protège les employés, les centres analytiques et les exports. Il n’est enregistré que sur votre serveur. Au moins ' + PW_MIN + ' caractères.</div>' +
         '<label class="f" for="pw1">Mot de passe<input id="pw1" type="password" autocomplete="new-password"></label>' +
         '<label class="f" for="pw2">Confirmer<input id="pw2" type="password" autocomplete="new-password"></label>' +
         (err ? '<div class="err" role="alert">' + esc(err) + '</div>' : '') +
@@ -48,9 +49,20 @@
     } else {
       h += '<div class="card"><h3>Connexion</h3><label class="f" for="pw">Mot de passe<input id="pw" type="password" autocomplete="current-password"></label>' +
         (err ? '<div class="err" role="alert">' + esc(err) + '</div>' : '') +
-        '<button class="btn full" data-act="alogin"' + (busy ? ' disabled' : '') + '>Se connecter</button></div>';
+        (info ? '<div class="ok-msg" role="status">' + esc(info) + '</div>' : '') +
+        '<button class="btn full" data-act="alogin"' + (busy ? ' disabled' : '') + '>Se connecter</button>' +
+        '<button class="btn ghost full" data-act="oubli"' + (busy ? ' disabled' : '') + '>Mot de passe oublié</button></div>';
     }
     return h + '<a class="lnk" href="etat.html">Voir le tableau d’équipe</a></main>';
+  }
+  // Connexion avec le mot de passe provisoire reçu par e-mail : on choisit tout de suite le nouveau.
+  function vProv() {
+    return head('Pointage GIOT Immobilier SA et OptimalGo SA') + '<main id="main"><div class="card"><h3>Choisir un nouveau mot de passe</h3>' +
+      '<div class="mute">Vous êtes connecté avec le mot de passe provisoire. Choisissez maintenant le vôtre : au moins ' + PW_MIN + ' caractères.</div>' +
+      '<label class="f" for="pn1">Nouveau mot de passe<input id="pn1" type="password" autocomplete="new-password"></label>' +
+      '<label class="f" for="pn2">Confirmer<input id="pn2" type="password" autocomplete="new-password"></label>' +
+      (err ? '<div class="err" role="alert">' + esc(err) + '</div>' : '') +
+      '<button class="btn full" data-act="prov-save"' + (busy ? ' disabled' : '') + '>Enregistrer</button></div></main>';
   }
   function tabsBar() {
     var list = [['employes', 'Employés'], ['dossiers', 'Centres'], ['export', 'Export Excel'], ['reglages', 'Réglages']];
@@ -162,6 +174,7 @@
   function render() {
     var m = document.getElementById('main'), sc = m ? m.scrollTop : 0, sh = root.querySelector('.sheet'), ssc = sh ? sh.scrollTop : 0;
     if (!cfg) { root.innerHTML = vGate(); return; }
+    if (prov) { root.innerHTML = vProv(); return; }
     var body = tab === 'dossiers' ? vDossiers() : tab === 'export' ? vExport() : tab === 'reglages' ? vReglages() : vEmployes();
     var actifs = cfg.employes.filter(function (e) { return e.actif; }).length, dAct = cfg.dossiers.filter(function (d) { return d.actif; }).length;
     root.innerHTML = head(actifs + ' employé' + (actifs > 1 ? 's' : '') + ' actif' + (actifs > 1 ? 's' : '') + ', ' + dAct + ' centre' + (dAct > 1 ? 's' : '') + ' actif' + (dAct > 1 ? 's' : '')) +
@@ -198,7 +211,7 @@
     'close-veil': function (ds, el, ev) { if (ev.target === el) sheet = null; else return false; },
     setup: function () {
       var a = val('pw1'), b = val('pw2');
-      if (a.length < 8) { err = 'Au moins 8 caractères.'; return; }
+      if (a.length < PW_MIN) { err = 'Au moins ' + PW_MIN + ' caractères.'; return; }
       if (a !== b) { err = 'Les deux saisies ne correspondent pas.'; return; }
       err = '';
       run(api('setup', { password: a })).then(function (r) { setToken(r.token); pret = true; return loadCfg(); }, function (e) { err = msgOf(e); }).then(render);
@@ -206,10 +219,24 @@
     },
     alogin: function () {
       err = '';
-      run(api('alogin', { password: val('pw') })).then(function (r) { setToken(r.token); return loadCfg(); }, function (e) { err = msgOf(e); }).then(render);
+      var p = val('pw'); info = '';
+      run(api('alogin', { password: p })).then(function (r) { setToken(r.token); prov = r.provisoire ? p : ''; return loadCfg(); }, function (e) { err = msgOf(e); }).then(render);
       return false;
     },
-    alogout: function () { var t = token; setToken(''); cfg = null; err = ''; flash = ''; api('logout', { token: t }).catch(function () { }); },
+    oubli: function () {
+      err = ''; info = '';
+      run(api('aoubli', { demande: 1 })).then(function (r) { info = 'Un mot de passe provisoire vient d’être envoyé à ' + r.a + '. Il est valable 30 minutes ; regardez aussi dans les indésirables.'; }, function (e) { err = msgOf(e); }).then(render);
+      return false;
+    },
+    'prov-save': function () {
+      var n = val('pn1'), n2 = val('pn2');
+      if (n.length < PW_MIN) { err = 'Au moins ' + PW_MIN + ' caractères.'; return; }
+      if (n !== n2) { err = 'Les deux saisies ne correspondent pas.'; return; }
+      err = '';
+      run(call('apass', { old: prov, new: n }), 'Mot de passe changé.').then(function () { prov = ''; }, function (e) { err = msgOf(e); }).then(render);
+      return false;
+    },
+    alogout: function () { var t = token; setToken(''); cfg = null; err = ''; flash = ''; prov = ''; info = ''; api('logout', { token: t }).catch(function () { }); },
     'emp-new': function () { sheet = { type: 'emp', x: { id: '', prenom: '', nom: '', pin: '', socs: Object.keys(cfg.socs).slice(0, 1), tous: false, dossiers: [], midi: false, actif: true } }; },
     'emp-edit': function (ds) {
       var e = cfg.employes.filter(function (p) { return p.id === ds.id; })[0]; if (!e) return;
@@ -306,7 +333,7 @@
     },
     apass: function () {
       var o = val('pw-old'), n = val('pw-new'), n2 = val('pw-new2'); flash = '';
-      if (n.length < 8) { err = 'Le nouveau mot de passe doit compter au moins 8 caractères.'; return; }
+      if (n.length < PW_MIN) { err = 'Le nouveau mot de passe doit compter au moins ' + PW_MIN + ' caractères.'; return; }
       if (n !== n2) { err = 'Les deux saisies ne correspondent pas.'; return; }
       err = '';
       run(call('apass', { old: o, new: n }), 'Mot de passe changé.').then(function () { }, function (e) { err = msgOf(e); }).then(render);
@@ -316,7 +343,7 @@
   root.addEventListener('click', function (ev) {
     var el = ev.target.closest('[data-act]'); if (!el || el.disabled) return;
     var fn = H[el.getAttribute('data-act')]; if (!fn) return;
-    if (!/-(save|del)$|^(regles|apass|export|setup|alogin)$/.test(el.getAttribute('data-act'))) flash = '';
+    if (!/-(save|del)$|^(regles|apass|export|setup|alogin|oubli|prov-save)$/.test(el.getAttribute('data-act'))) flash = '';
     if (fn(el.dataset, el, ev) === false) return;
     render();
   });
@@ -347,6 +374,7 @@
   root.addEventListener('keydown', function (ev) {
     if (ev.key !== 'Enter') return;
     if (ev.target.id === 'pw') { ev.preventDefault(); H.alogin(); }
+    if (ev.target.id === 'pn2') { ev.preventDefault(); if (H['prov-save']() !== false) render(); }
     if (ev.target.id === 'pw2') { ev.preventDefault(); if (H.setup() !== false) render(); }
   });
 
