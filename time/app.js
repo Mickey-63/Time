@@ -172,7 +172,7 @@
     } else {
       sub = ps.length ? 'Journée terminée' : 'Journée non commencée';
     }
-    var head = '<header class="status st-' + st.code + '">' + topLine() + '<div class="st-label" role="status">' + ic(st.code) + LIB[st.code] + '</div><div class="st-sub">' + sub + '</div><div class="st-meta">' + meta + syncChip() + '</div></header>';
+    var head = '<div class="strip">' + topLine() + '</div><header class="status st-' + st.code + '"><div class="st-label" role="status">' + ic(st.code) + LIB[st.code] + '</div><div class="st-sub">' + sub + '</div><div class="st-meta">' + meta + syncChip() + '</div></header>';
     var body = tab === 'journee' ? vJournee(list, t) : vPointage(st, ctx, t, tt);
     return head + '<main id="main">' + body + '</main>' + (tab === 'pointage' ? cmdBar(st) : '') + tabs([['pointage', 'Pointage'], ['journee', 'Journée']], tab);
   }

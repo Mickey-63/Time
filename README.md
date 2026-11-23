@@ -9,6 +9,7 @@ Dépôt de publication vers www.le-top.ch.
   - `index.html` : pointage des employés (nom + code PIN).
   - `etat.html` : tableau d'équipe public, en lecture seule.
   - `admin.html` : administration (mot de passe créé à la première ouverture) — employés, dossiers et codes analytiques, affectations, export Excel.
+  - Logo : `giot.png` (lettres rouges, sans fond) + `chat.png` (chat animé, sans fond), produits depuis `logo.gif` par `logo.py` (racine du dépôt, non publié). Sur toutes les pages, toucher le chat ouvre l'administration.
   - `api.php` : stockage côté serveur dans `/web/time/data/`, créé par le serveur. Ce dossier n'est jamais dans le dépôt et le déploiement n'y touche pas.
   - Aucune donnée réelle (noms, dossiers, mots de passe) n'est dans ce dépôt public : tout se saisit dans l'administration.
   - Mot de passe d'administration perdu : effacer `/web/time/data/cfg.php` par FTP remet l'administration à zéro (employés et dossiers à ressaisir, pointages conservés).

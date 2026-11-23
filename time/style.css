@@ -13,6 +13,7 @@
     --paper: #0f141a; --card: #19212a; --ink: #edf1f5; --mute: #9aa7b6; --line: #2d3844;
     --accent: #edf1f5; --on-accent: #0f141a; --alert: #ff8a80; --alert-bg: #3a1c1a;
     --vert: #1f9a56; --bleu: #3577ea; --orange: #f09a1a; --gris: #5d6976;
+    --logo-fx: drop-shadow(0 0 .6px rgba(237, 241, 245, .95)) drop-shadow(0 0 .6px rgba(237, 241, 245, .95));
     color-scheme: dark;
   }
 }
@@ -20,6 +21,7 @@
   --paper: #0f141a; --card: #19212a; --ink: #edf1f5; --mute: #9aa7b6; --line: #2d3844;
   --accent: #edf1f5; --on-accent: #0f141a; --alert: #ff8a80; --alert-bg: #3a1c1a;
   --vert: #1f9a56; --bleu: #3577ea; --orange: #f09a1a; --gris: #5d6976;
+  --logo-fx: drop-shadow(0 0 .6px rgba(237, 241, 245, .95)) drop-shadow(0 0 .6px rgba(237, 241, 245, .95));
   color-scheme: dark;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -176,8 +178,18 @@ ul.plain { margin: 0; padding-left: 18px; display: flex; flex-direction: column;
 @media (prefers-reduced-motion: no-preference) { .dos, .cmd button, .resume { transition: transform .08s; } .dos:active, .cmd button:active, .resume:active { transform: scale(.98); } }
 
 /* ---------- Version serveur : logo, connexion, tableau public, administration ---------- */
-.logo { height: 24px; width: auto; flex: none; background: #fff; border-radius: 6px; padding: 3px 6px; box-sizing: content-box; display: block; }
-.st-top .logo { height: 18px; }
+/* Logo sans fond : seules les lettres et le chat se voient, sur clair comme sur sombre. */
+.logo { height: 28px; flex: none; display: inline-flex; align-items: stretch; line-height: 0; }
+.logo img { height: 100%; width: auto; display: block; -webkit-user-drag: none; user-select: none; -webkit-user-select: none; }
+.logo .chat { position: relative; display: block; -webkit-touch-callout: none; border-radius: 4px; }
+.logo .chat::after { content: ''; position: absolute; inset: -12px -10px -12px -6px; } /* zone tactile élargie */
+.logo .chat img { filter: var(--logo-fx, none); }
+.st-top .logo { height: 24px; }
+/* Pointage : bande neutre au-dessus du bandeau de statut, pour que le logo ne soit jamais sur une couleur */
+.strip { background: var(--card); padding: calc(6px + env(safe-area-inset-top)) 16px 6px; }
+.strip .who { background: var(--paper); color: var(--ink); }
+.strip + .status { padding-top: 6px; }
+.strip + .status .st-label { margin-top: 4px; }
 .st-meta .sync { margin-left: auto; }
 .sheet > * { flex-shrink: 0; }
 a { color: inherit; }
@@ -185,7 +197,7 @@ a.btn { text-decoration: none; }
 a.lnk { text-align: center; font-size: 14.5px; color: var(--mute); min-height: 40px; display: flex; align-items: center; justify-content: center; }
 
 .login { flex: 1; overflow-y: auto; padding: calc(28px + env(safe-area-inset-top)) 20px 24px; display: flex; flex-direction: column; gap: 14px; max-width: 420px; width: 100%; margin: 0 auto; }
-.login .logo { height: 30px; align-self: flex-start; }
+.login .logo { height: 38px; align-self: flex-start; }
 .login h1 { font-size: 34px; margin-top: 6px; }
 .login input.pin { letter-spacing: .3em; font-size: 22px; }
 
@@ -194,7 +206,7 @@ a.lnk { text-align: center; font-size: 14.5px; color: var(--mute); min-height: 4
 .board header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .board h1 { font-size: clamp(26px, 3.4vw, 44px); }
 .board .when { color: var(--mute); font-weight: 500; font-size: clamp(14px, 1.3vw, 18px); }
-.board .logo { margin-left: auto; height: clamp(22px, 2.2vw, 30px); }
+.board .logo { margin-left: auto; height: clamp(28px, 2.8vw, 40px); }
 .counts { display: flex; flex-wrap: wrap; gap: 8px; }
 .counts .chip { font-size: clamp(13px, 1.1vw, 16px); padding: 5px 12px; }
 .counts .chip i { width: 10px; height: 10px; border-radius: 50%; background: var(--bg); display: inline-block; }
