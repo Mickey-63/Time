@@ -155,6 +155,26 @@ function triesClear(string $key): void {
   wr('tries', $t);
 }
 
+/* Mot de passe d'administration perdu : le fichier reinit.php (facultatif, posé par le dépôt) donne un identifiant et
+   l'empreinte d'un mot de passe provisoire. Appliqué une seule fois par identifiant ; employés, centres et pointages intacts. */
+function reinit(): void {
+  $f = __DIR__ . '/reinit.php';
+  if (!is_file($f)) return;
+  $r = include $f;
+  if (!is_array($r) || empty($r['id']) || empty($r['hash']) || !is_string($r['hash'])) return;
+  if ((rd('cfg', [])['reinit'] ?? '') === $r['id']) return;
+  lock();
+  $c = cfg();
+  if (($c['reinit'] ?? '') === $r['id']) return;
+  $c['adminHash'] = $r['hash'];
+  $c['reinit'] = (string) $r['id'];
+  wr('cfg', $c);
+  sessDrop('admin');
+  $t = rd('tries', []); // lève aussi le blocage « trop d'essais »
+  foreach ($t as $k => $v) if (strncmp((string) $k, 'adm:', 4) === 0) unset($t[$k]);
+  wr('tries', $t);
+}
+
 /* ---------- événements ---------- */
 function evClean(array $e, string $pid, array $dos): ?array {
   $id = (string) ($e['id'] ?? '');
@@ -203,6 +223,7 @@ function etatSet(string $pid, array $evs): void {
 
 /* ---------- requête ---------- */
 boot();
+reinit();
 semis();
 $a = (string) ($_GET['a'] ?? '');
 $in = json_decode((string) file_get_contents('php://input'), true);
