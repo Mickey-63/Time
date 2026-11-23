@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Time GIOT — Mode d’emploi</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="top">
+  <div>
+    <h1>Time GIOT<br><span class="rouge">Mode d’emploi</span></h1>
+    <div class="sub">Le pointage du temps de travail par centre analytique, sur le téléphone.</div>
+    <div class="ver" style="margin-top:4pt">Version du 24 novembre 2026 · GIOT Immobilier SA · Le résumé en une page s’appelle « Time GIOT pour les nuls ».</div>
+  </div>
+  <div class="logo"><img src="../time/giot.png" alt="GIOT"><img src="../time/chat.png" alt=""></div>
+</div>
+
+<div class="box">
+  <h3>Sommaire</h3>
+  <p style="margin:0">1. À quoi sert Time GIOT · 2. Se connecter · 3. L’écran de pointage · 4. Le déroulement d’une journée · 5. Les centres analytiques · 6. L’onglet Journée et les corrections · 7. Les contrôles de pauses · 8. Sans réseau · 9. Le tableau d’équipe · 10. L’administration · 11. Questions fréquentes</p>
+</div>
+
+<h2>1. À quoi sert Time GIOT</h2>
+<p>Time GIOT enregistre le temps de travail de chacun et le répartit sur des <b>centres analytiques</b>. Le but est double : connaître le temps de travail en général, et surtout <b>charger le temps sur les chantiers et les immeubles</b> pour lesquels il sera facturé.</p>
+<p>Les centres suivent la clé de la comptabilité analytique du programme Astuces : <b>un centre est l’adresse postale d’un immeuble</b>. Quelques centres seulement sont généraux (Travail courant, Véhicules, Chantiers, Divers, Immobilier, OptimalGo). Les heures pointées sont ensuite reportées dans Astuces.</p>
+<p>Tout se fait d’un geste, sur le téléphone. L’employé ne saisit jamais d’heure à la main, sauf pour corriger un oubli.</p>
+
+<h2>2. Se connecter</h2>
+<figure class="fig"><div class="shot"><img src="img/n-connexion.png" alt=""></div><figcaption>La page de connexion</figcaption></figure>
+<ol>
+  <li>Ouvre <b>www.le-top.ch/time</b> dans le navigateur du téléphone.</li>
+  <li>Choisis ton nom dans la liste « Qui es-tu ? ».</li>
+  <li>Tape ton <b>code PIN</b> (4 à 8 chiffres, remis par la direction) et touche <span class="btn">Se connecter</span>.</li>
+</ol>
+<p>Tu restes ensuite connecté sur ce téléphone : pas besoin de retaper le PIN chaque jour. Pour te déconnecter, touche ton nom en haut à gauche, puis « Se déconnecter ».</p>
+<p><b>Raccourci sur l’écran d’accueil (iPhone) :</b> dans Safari, touche le bouton Partager, puis « Sur l’écran d’accueil ». Time GIOT s’ouvre alors comme une application.</p>
+<p><b>Six codes PIN faux de suite</b> bloquent la connexion pendant 15 minutes. Si tu as oublié ton PIN, la direction t’en donne un nouveau.</p>
+<p>Sur cette même page, deux liens ouvrent les modes d’emploi : celui-ci, et le résumé « Time GIOT pour les nuls ».</p>
+<div class="clear"></div>
+
+<h2>3. L’écran de pointage</h2>
+<figure class="fig"><div class="shot"><img src="img/courant.png" alt=""></div><figcaption>En travail, sur « Travail courant »</figcaption></figure>
+<p>De haut en bas :</p>
+<ul>
+  <li><b>Ton nom</b> (menu : tableau d’équipe, modes d’emploi, déconnexion) et le logo GIOT.</li>
+  <li><b>Le bandeau de statut</b>, en couleur : ce que tu fais en ce moment, sur quel centre, depuis quelle heure, et le temps passé aujourd’hui sur ce centre.</li>
+  <li><b>Le lieu</b> : <span class="btn c">Au bureau</span> ou <span class="btn c">En déplacement</span>.</li>
+  <li><b>Tes centres</b> : d’abord les centres communs, puis « Mes centres », ceux qui te sont attribués. Le centre en cours est en couleur. Chaque tuile affiche le temps déjà passé dessus aujourd’hui.</li>
+  <li><b>Les commandes</b>, en bas : Appel privé, Pause, Midi, Fin de journée.</li>
+  <li><b>Les onglets</b> : Pointage et Journée.</li>
+</ul>
+<table>
+  <tr><th>Couleur du bandeau</th><th>Signification</th></tr>
+  <tr><td><span class="dot" style="background:#17884a"></span>Vert</td><td>Au bureau (ou à l’atelier), en travail</td></tr>
+  <tr><td><span class="dot" style="background:#1f5fd0"></span>Bleu</td><td>En déplacement, en travail</td></tr>
+  <tr><td><span class="dot" style="background:#e98a06"></span>Orange</td><td>En pause (pause, midi, appel privé, café avant travail)</td></tr>
+  <tr><td><span class="dot" style="background:#6c7886"></span>Gris</td><td>Absent : journée pas commencée ou terminée</td></tr>
+</table>
+<p><b>Chercher un centre :</b> dès que tu as plus de six centres, un champ de recherche apparaît. Tape quelques lettres de l’adresse.</p>
+<p><b>Favoris :</b> touche l’étoile d’une tuile pour la faire remonter en tête de sa liste.</p>
+<p>En bas du bandeau, <b>« Synchronisé »</b> confirme que tout est transmis au serveur (voir chapitre 8).</p>
+<div class="clear"></div>
+
+<h2>4. Le déroulement d’une journée</h2>
+<figure class="fig"><div class="shot"><img src="img/n-commencer.png" alt=""></div><figcaption>Avant de commencer</figcaption></figure>
+<h3>Commencer</h3>
+<p>En arrivant, touche <span class="btn">Commencer la journée</span>. Tu démarres sur le centre par défaut, <b>« Travail courant »</b>. Le premier travail du matin, relever et traiter en gros les e-mails reçus, se fait sur ce centre, sans attribution à un chantier.</p>
+<p>Tu peux aussi commencer directement sur un autre centre en touchant sa tuile.</p>
+<h3>Changer de centre : la règle des 15 minutes</h3>
+<p>Dès que tu passes à un travail précis pour une adresse ou un chantier, touche son centre. Le temps est chargé sur ce centre à partir de cet instant, et le centre précédent s’arrête tout seul.</p>
+<div class="box r" style="margin:5pt 0 7pt; overflow:hidden">
+  <b>Règle des 15 minutes.</b> Quand tu es en Travail courant, un travail doit demander <b>au moins 15 minutes</b> pour être chargé sur le centre concerné. Un e-mail vite répondu ou un téléphone de deux minutes reste en Travail courant. Une réponse à étudier, un dossier à ouvrir, une question à creuser : dès que cela dépasse 15 minutes, tu touches le centre.
+</div>
+<h3>Au bureau ou en déplacement</h3>
+<p>Touche <span class="btn c">En déplacement</span> quand tu quittes le bureau pour le travail, et <span class="btn c">Au bureau</span> à ton retour. Le centre ne change pas, seul le lieu change. Le tableau d’équipe montre ainsi qui est sur place.</p>
+<div class="clear"></div>
+<figure class="fig"><div class="shot"><img src="img/n-pause.png" alt=""></div><figcaption>En pause : un geste pour reprendre</figcaption></figure>
+<h3>Pause, midi, appel privé</h3>
+<ul>
+  <li><span class="btn c">Pause</span> : la pause ordinaire.</li>
+  <li><span class="btn c">Midi</span> : le repas de midi.</li>
+  <li><span class="btn">Appel privé</span> : un téléphone personnel. Il est compté comme une pause.</li>
+</ul>
+<p>Au retour, touche <span class="btn">Reprendre</span> : tu repars sur le même centre et le même lieu qu’avant la pause. Tu peux aussi reprendre sur un autre centre en touchant sa tuile.</p>
+<p>Si une pause dure longtemps, un rappel s’affiche. Il ne change jamais ton statut : c’est toujours toi qui reprends.</p>
+<h3>Café avant travail</h3>
+<p>Tu es arrivé mais tu ne travailles pas encore : touche <span class="btn c">Café avant travail</span>. Ce temps n’est compté ni comme travail ni comme pause. Touche ensuite « Commencer la journée ».</p>
+<h3>Terminer</h3>
+<p>En partant, touche <span class="btn c">Fin de journée</span>. C’est le seul geste qui arrête le compteur. En cas d’oubli, le programme le signale quand plus de 11 heures se sont écoulées sans aucun geste ; tu corriges alors l’heure réelle dans l’onglet Journée. Rien n’est jamais retiré automatiquement.</p>
+<div class="clear"></div>
+
+<h2>5. Les centres analytiques</h2>
+<p>Un centre est ce sur quoi on charge le temps. Il y en a de deux sortes.</p>
+<h3>Les centres communs, proposés à tous</h3>
+<table>
+  <tr><th>Centre</th><th>Ce qu’on y charge</th></tr>
+  <tr><td>Travail courant</td><td>Le centre par défaut. Tout ce qui ne peut pas être attribué à un chantier ou à une activité précise : e-mails du matin, rangement des outils, lecture, petit nettoyage de la cafétéria, tâches de moins de 15 minutes.</td></tr>
+  <tr><td>Véhicules</td><td>S’occuper des véhicules de l’entreprise.</td></tr>
+  <tr><td>Chantiers</td><td>Du temps passé sur un ensemble de chantiers, sans pouvoir l’attribuer à un seul. Ce temps est facturé.</td></tr>
+  <tr><td>Divers</td><td>Des tâches générales qui ne concernent aucun chantier en particulier.</td></tr>
+  <tr><td>Immobilier</td><td>La gestion de nos propres immeubles quand la tâche en touche plusieurs à la fois, ou pour des bricoles de moins de 15 minutes.</td></tr>
+  <tr><td>OptimalGo</td><td>Tout travail fait pour OptimalGo SA, quelle que soit la tâche. Ce temps lui est refacturé.</td></tr>
+</table>
+<h3>Les centres attribués : les adresses</h3>
+<p>Chaque immeuble ou chantier est un centre qui porte son <b>adresse postale</b>, comme dans Astuces. La direction attribue à chacun les adresses sur lesquelles il travaille ; elles apparaissent sous « Mes centres ». S’il te manque une adresse, demande-la : elle apparaît toute seule dès qu’elle t’est attribuée.</p>
+<p>Le détail du temps général n’est pas l’essentiel. Il sert à voir, pour chacun, la part du temps passée en général et la part réellement passée sur les chantiers. <b>Ce qui compte, c’est de charger le chantier sur lequel on travaille.</b></p>
+
+<h2>6. L’onglet Journée et les corrections</h2>
+<figure class="fig"><div class="shot"><img src="img/d-journee.png" alt=""></div><figcaption>Le relevé du jour</figcaption></figure>
+<p>L’onglet <b>Journée</b> montre ta journée telle qu’elle est enregistrée :</p>
+<ul>
+  <li>les totaux : <b>Travail</b>, <b>Pauses</b>, <b>Avant travail</b> ;</li>
+  <li>le <b>relevé du jour</b>, plage par plage, avec l’heure de début, l’heure de fin, le centre et le lieu ;</li>
+  <li>le total <b>par centre</b> ;</li>
+  <li>les éventuels signalements de pauses (chapitre 7).</li>
+</ul>
+<p>Les flèches en haut permettent de revenir sur les jours précédents. Les <b>45 derniers jours</b> restent consultables et corrigeables.</p>
+<h3>Corriger une heure</h3>
+<ol>
+  <li>Dans le relevé, touche <span class="btn c">Corriger</span> sur la ligne concernée.</li>
+  <li>Indique la <b>date et l’heure réelles</b>.</li>
+  <li>Écris la <b>raison</b> (par exemple « oubli de fin de journée »). Elle est obligatoire.</li>
+  <li>Touche « Enregistrer la correction ».</li>
+</ol>
+<p>L’ancienne heure et ta raison restent dans l’historique et figurent dans l’export : une correction ne cache rien, elle rétablit l’heure vraie.</p>
+<h3>Les cas courants</h3>
+<ul>
+  <li><b>Fin de journée oubliée :</b> touche « Fin de journée », puis corrige son heure.</li>
+  <li><b>Oublié de commencer :</b> commence maintenant, puis corrige l’heure de début.</li>
+  <li><b>Oublié de changer de centre :</b> touche le bon centre maintenant, puis corrige son heure de début : le centre précédent est raccourci d’autant.</li>
+</ul>
+<div class="clear"></div>
+
+<h2>7. Les contrôles de pauses</h2>
+<p>Le programme compare ta journée aux pauses légales et les <b>signale</b> dans l’onglet Journée. Il ne retire jamais de temps de lui-même.</p>
+<table>
+  <tr><th>Travail dans la journée</th><th>Pause attendue</th></tr>
+  <tr><td>Plus de 5 h 30</td><td>15 minutes</td></tr>
+  <tr><td>Plus de 7 h</td><td>30 minutes</td></tr>
+  <tr><td>Plus de 9 h</td><td>60 minutes</td></tr>
+</table>
+<p>Plus de 5 h 30 de travail d’affilée sans aucune pause est aussi signalé.</p>
+<p><b>Midi GIOT :</b> pour les employés chez qui la règle est activée, la pause de midi dure 60 minutes. Une fois par semaine, un midi plus court d’au moins 30 minutes est admis comme exception ; au-delà, l’écart est signalé. La durée réelle est toujours conservée. Ces durées se règlent dans l’administration.</p>
+
+<h2>8. Sans réseau</h2>
+<p>Chaque geste est d’abord <b>enregistré dans le téléphone</b>, puis transmis au serveur. Sans réseau, tu pointes normalement : le bandeau indique « Hors ligne » et le nombre de pointages à transmettre. Ils partent tout seuls dès que le réseau revient, et l’indication redevient « Synchronisé ».</p>
+<p>L’heure retenue est celle du téléphone. Si elle s’écarte de plus de deux minutes de celle du serveur, c’est l’heure du serveur qui fait foi.</p>
+
+<h2>9. Le tableau d’équipe</h2>
+<figure class="fig w"><div class="shot"><img src="img/equipe.png" alt=""></div><figcaption>Le tableau d’équipe, prévu pour rester affiché sur un écran</figcaption></figure>
+<p>La page <b>www.le-top.ch/time/etat.html</b> montre en un coup d’œil qui est au bureau, en déplacement, en pause ou absent, et sur quel centre. Elle est en lecture seule, se met à jour toutes les 15 secondes et passe en plein écran d’un bouton. Elle n’affiche ni la durée ni le motif des pauses.</p>
+<p>On y accède depuis la page de connexion (« Voir le tableau d’équipe ») ou depuis le menu de son nom.</p>
+
+<h2>10. L’administration</h2>
+<p>Cette partie concerne la direction. <b>Pour ouvrir l’administration, touchez le chat du logo</b>, depuis n’importe quelle page. Elle est protégée par un mot de passe.</p>
+<p><b>Mot de passe oublié :</b> sur la page de connexion, touchez « Mot de passe oublié ». Un mot de passe provisoire, valable 30 minutes, est envoyé à l’adresse e-mail de la direction. Connectez-vous avec, puis choisissez le nouveau mot de passe. Tant que vous ne l’avez pas remplacé, l’ancien reste valable.</p>
+
+<div class="sec">
+<h3>Onglet Centres</h3>
+<figure class="fig"><div class="shot"><img src="img/d-centres.png" alt=""></div><figcaption>Les centres communs et les centres à attribuer</figcaption></figure>
+<ul>
+  <li><span class="btn">Ajouter un centre</span> : son nom (l’adresse de l’immeuble, le chantier ou un centre général), un code analytique facultatif, la société.</li>
+  <li><b>Centre commun</b> : coché, le centre est proposé d’office à tous les employés de la société. Décoché, il s’attribue employé par employé.</li>
+  <li><b>Centre par défaut</b> : celui sur lequel la journée commence. Un seul par société.</li>
+  <li><b>Actif</b> : décochez pour archiver un centre. Il disparaît du pointage, ses heures restent dans les exports.</li>
+  <li><span class="btn c">Importer une liste</span> : collez une liste, un centre par ligne. Pour joindre un code analytique, écrivez « Nom ; code ». Les centres déjà présents sont ignorés.</li>
+</ul>
+<p>Un centre sur lequel des heures sont déjà chargées ne peut pas être supprimé : on l’archive.</p>
+<div class="clear"></div>
+</div>
+
+<div class="sec">
+<h3>Onglet Employés</h3>
+<figure class="fig"><div class="shot"><img src="img/d-fiche.png" alt=""></div><figcaption>La fiche d’un employé : ses centres</figcaption></figure>
+<ul>
+  <li><span class="btn">Ajouter un employé</span> : prénom, nom, <b>code PIN</b> de 4 à 8 chiffres, société.</li>
+  <li><b>Centres où il charge son temps</b> : les centres communs sont inclus d’office. Cochez en dessous les adresses qui le concernent ; la recherche et « Tout cocher » accélèrent le choix. « Tous les centres de sa société » donne tout, y compris les futurs.</li>
+  <li><b>Midi obligatoire</b> : active la règle du midi de 60 minutes pour cet employé.</li>
+  <li><b>Actif</b> : décochez pour un employé qui ne doit plus pointer. Ses heures restent dans les exports.</li>
+  <li><b>Changer un PIN</b> : saisissez-en un nouveau dans la fiche. L’employé devra se reconnecter.</li>
+</ul>
+<p>Un employé qui a déjà des pointages ne peut pas être supprimé : on le désactive.</p>
+<div class="clear"></div>
+</div>
+
+<div class="sec">
+<h3>Onglet Export Excel</h3>
+<figure class="fig"><div class="shot"><img src="img/d-export.png" alt=""></div><figcaption>L’export des heures</figcaption></figure>
+<p>Choisissez la période (ce mois, le mois dernier, cette année ou des dates libres), éventuellement un collaborateur et une société, puis téléchargez le classeur. Il contient trois feuilles :</p>
+<ul>
+  <li><b>Détail</b> : chaque plage avec la date, le collaborateur, le centre, le code analytique, le lieu, le début, la fin et la durée ;</li>
+  <li><b>Par centre</b> : le total des heures par centre et par collaborateur, pour le report dans Astuces ;</li>
+  <li><b>Par collaborateur</b> : le total de chacun.</li>
+</ul>
+<p>Une plage encore en cours est marquée « Provisoire ». Une heure corrigée porte « Oui » dans la colonne Corrigé.</p>
+<h3>Onglet Réglages</h3>
+<ul>
+  <li>Les <b>adresses à transmettre</b> : page de pointage et tableau d’équipe.</li>
+  <li>Les <b>règles</b>, en minutes : midi obligatoire, exception hebdomadaire, rappels de pause et de midi.</li>
+  <li>Le <b>mot de passe</b> d’administration, et la déconnexion.</li>
+</ul>
+<div class="clear"></div>
+</div>
+
+<h2>11. Questions fréquentes</h2>
+<div class="sec"><h3>J’ai touché le mauvais centre.</h3><p>Touche tout de suite le bon. Si l’erreur a duré, corrige l’heure de début du bon centre dans l’onglet Journée.</p></div>
+<div class="sec"><h3>Je travaille pour plusieurs immeubles à la fois.</h3><p>Utilise le centre commun « Immobilier ». Pour plusieurs chantiers à la fois, « Chantiers ».</p></div>
+<div class="sec"><h3>Je n’ai pas de réseau sur le chantier.</h3><p>Pointe normalement. Tout est gardé dans le téléphone et transmis au retour du réseau.</p></div>
+<div class="sec"><h3>J’ai changé de téléphone.</h3><p>Ouvre la page sur le nouveau téléphone et connecte-toi avec ton nom et ton PIN. Tes pointages sont sur le serveur.</p></div>
+<div class="sec"><h3>Le centre dont j’ai besoin n’est pas dans ma liste.</h3><p>Demande à la direction de te l’attribuer. Il apparaît tout seul dans ta liste, sans te reconnecter.</p></div>
+<div class="sec"><h3>Faut-il pointer chaque téléphone ou chaque e-mail ?</h3><p>Non. En dessous de 15 minutes, tout reste en Travail courant.</p></div>
+</body>
+</html>

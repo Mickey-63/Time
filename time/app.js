@@ -155,7 +155,7 @@
         '<button class="btn full" data-act="login"' + (busy ? ' disabled' : '') + '>' + (busy ? 'Connexion…' : 'Se connecter') + '</button>';
       if (pending()) h += '<div class="mute small">' + pending() + ' pointage(s) de la dernière session attendent sur ce téléphone. Ils partiront à la reconnexion de la même personne.</div>';
     }
-    return h + '<a class="lnk" href="etat.html">Voir le tableau d’équipe</a></div>';
+    return h + '<div class="aide"><div class="sec"><span>Modes d’emploi</span><span>PDF</span></div>' + window.aide('btn ghost full') + '</div><a class="lnk" href="etat.html">Voir le tableau d’équipe</a></div>';
   }
   function vApp() {
     var t = now(), list = evs(), st = E.statusOf(list), ctx = E.ctxOf(list), tab = S.tab === 'journee' ? 'journee' : 'pointage', today = E.dayKey(t);
@@ -264,7 +264,7 @@
     if (!sheet) return '';
     var h = '';
     if (sheet.type === 'menu') {
-      h += '<h2>' + esc(S.me.prenom + ' ' + S.me.nom) + '</h2><a class="btn ghost full" href="etat.html">Tableau d’équipe</a>';
+      h += '<h2>' + esc(S.me.prenom + ' ' + S.me.nom) + '</h2><a class="btn ghost full" href="etat.html">Tableau d’équipe</a>' + window.aide('btn ghost full');
       if (pending()) h += '<div class="note">' + pending() + ' pointage(s) pas encore transmis. Ils restent sur ce téléphone et partiront à ta prochaine connexion.</div>';
       h += '<button class="btn ghost full" data-act="logout">Se déconnecter</button>';
     } else if (sheet.type === 'corr') {

@@ -1,0 +1,45 @@
+@page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+* { box-sizing: border-box; }
+html { font-family: 'Liberation Sans', Arial, sans-serif; font-size: 10.4pt; line-height: 1.4; color: #121a23; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { margin: 0; }
+h1 { font-size: 25pt; line-height: 1.08; margin: 0; letter-spacing: -.01em; }
+h2 { font-size: 14.5pt; margin: 16pt 0 5pt; padding-top: 6pt; border-top: 1.2pt solid #121a23; break-after: avoid; }
+h3 { font-size: 11pt; margin: 10pt 0 2pt; break-after: avoid; }
+p { margin: 0 0 5pt; }
+ul, ol { margin: 0 0 6pt; padding-left: 15pt; }
+li { margin-bottom: 2.5pt; }
+b, strong { font-weight: 700; }
+.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10mm; margin-bottom: 5mm; }
+.top .sub { font-size: 11.5pt; color: #5a6777; margin-top: 3pt; }
+.logo { display: flex; height: 11mm; flex: none; }
+.logo img { height: 100%; }
+.ver { font-size: 8.5pt; color: #5a6777; }
+.rouge { color: #e2000b; }
+.shot { border: .8pt solid #c9d1db; border-radius: 3.2mm; overflow: hidden; background: #eceff3; }
+.shot img { display: block; width: 100%; }
+.btn { display: inline-block; font-weight: 700; padding: 0 4pt; border-radius: 3pt; background: #121a23; color: #fff; white-space: nowrap; font-size: .9em; line-height: 1.35; border: .7pt solid #121a23; }
+.btn.c { background: #fff; color: #121a23; border-color: #8793a3; }
+.box { border-radius: 3mm; padding: 4mm 5mm; background: #eceff3; break-inside: avoid; }
+.box.r { background: #fdeceb; }
+.box h3 { margin-top: 0; }
+.fig { float: right; width: 47mm; margin: 1mm 0 3mm 6mm; break-inside: avoid; }
+.fig.w { width: 100%; float: none; margin: 3mm 0; }
+.fig figcaption, .cap { font-size: 8.3pt; color: #5a6777; margin-top: 1.5mm; text-align: center; }
+figure { margin: 0; }
+.clear { clear: both; }
+table { border-collapse: collapse; width: 100%; margin: 3pt 0 7pt; font-size: 9.6pt; }
+th, td { text-align: left; vertical-align: top; padding: 3.5pt 6pt 3.5pt 0; border-bottom: .6pt solid #d3dae3; }
+th { font-weight: 700; color: #5a6777; font-size: 8.6pt; text-transform: uppercase; letter-spacing: .05em; }
+td:first-child { white-space: nowrap; font-weight: 700; padding-right: 10pt; }
+.dot { display: inline-block; width: 8pt; height: 8pt; border-radius: 50%; vertical-align: -0.5pt; margin-right: 3pt; }
+.sec { break-inside: avoid; }
+/* Pour les nuls */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm 6mm; margin-bottom: 4mm; }
+.step { break-inside: avoid; }
+.step .n { display: inline-flex; width: 7mm; height: 7mm; border-radius: 50%; background: #e2000b; color: #fff; font-weight: 700; align-items: center; justify-content: center; font-size: 11pt; margin-right: 2mm; flex: none; }
+.step .t { display: flex; align-items: center; font-weight: 700; font-size: 11.5pt; margin-bottom: 1.5mm; }
+.step p { font-size: 9.4pt; margin: 1.5mm 0 0; line-height: 1.34; }
+.step .shot { width: 39mm; margin: 0 auto; }
+.duo { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+.duo ul { margin: 0; padding-left: 13pt; }
+.duo li { font-size: 9.6pt; }

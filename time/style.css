@@ -239,3 +239,5 @@ h3.soc { font-size: 20px; margin-top: 4px; }
 .chk[hidden] { display: none; }
 .resume { flex: none; }
 .resume.go b { font-size: 27px; }
+
+.aide { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
