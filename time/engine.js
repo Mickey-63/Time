@@ -234,7 +234,7 @@
     var S = { h: 1, date: 2, time: 3, dur: 4, chf: 5, b: 6, bdur: 7 };
     function hd(v) { return { v: v, s: S.h }; }
     function socNom(id) { return id && m.socs[id] ? m.socs[id].nom : '—'; }
-    var detail = [['Date', 'Société', 'Collaborateur', 'Dossier', 'Code analytique', 'Lieu', 'Début', 'Fin', 'Catégorie', 'Durée', 'Minutes', 'Plage', 'Corrigé'].map(hd)];
+    var detail = [['Date', 'Société', 'Collaborateur', 'Centre', 'Code analytique', 'Lieu', 'Début', 'Fin', 'Catégorie', 'Durée', 'Minutes', 'Plage', 'Corrigé'].map(hd)];
     var parD = {}, parC = {};
     m.people.forEach(function (p) {
       if (f.pid && f.pid !== p.id) return;
@@ -244,7 +244,7 @@
         if ((f.from && x.date < f.from) || (f.to && x.date > f.to)) return;
         var ms = x.end - x.start, d = null, soc = null;
         if (x.t === 'travail') {
-          d = m.dossiers[x.d] || { nom: 'Dossier supprimé', code: '', soc: null };
+          d = m.dossiers[x.d] || { nom: 'Centre supprimé', code: '', soc: null };
           soc = d.soc;
           if (f.soc && soc !== f.soc) return;
           var kd = (soc || '') + '|' + d.nom + '|' + x.d;
@@ -269,11 +269,11 @@
     detail.sort(function (a, b) { return a[0].v - b[0].v || (a[2] < b[2] ? -1 : a[2] > b[2] ? 1 : 0) || a[6].v - b[6].v; });
     detail.unshift(head);
     // Par dossier
-    var sd = [['Société', 'Dossier', 'Code analytique', 'Collaborateur', 'Travail'].map(hd)], totD = 0;
+    var sd = [['Société', 'Centre', 'Code analytique', 'Collaborateur', 'Travail'].map(hd)], totD = 0;
     Object.keys(parD).sort().forEach(function (k) {
       var g = parD[k], t = 0;
       Object.keys(g.by).sort().forEach(function (n) { t += g.by[n]; sd.push([socNom(g.soc), g.d.nom, g.d.code || '', n, { v: g.by[n] / DAY, s: S.dur }]); });
-      sd.push([{ v: socNom(g.soc), s: S.b }, { v: g.d.nom, s: S.b }, { v: g.d.code || '', s: S.b }, { v: 'Total dossier', s: S.b }, { v: t / DAY, s: S.bdur }]);
+      sd.push([{ v: socNom(g.soc), s: S.b }, { v: g.d.nom, s: S.b }, { v: g.d.code || '', s: S.b }, { v: 'Total centre', s: S.b }, { v: t / DAY, s: S.bdur }]);
       totD += t;
     });
     sd.push([{ v: 'Total période', s: S.b }, '', '', '', { v: totD / DAY, s: S.bdur }]);
@@ -291,7 +291,7 @@
     return {
       sheets: [
         { name: 'Détail', rows: detail, widths: [12, 22, 22, 30, 16, 12, 8, 8, 11, 9, 9, 11, 9] },
-        { name: 'Par dossier', rows: sd, widths: [22, 32, 16, 22, 11] },
+        { name: 'Par centre', rows: sd, widths: [22, 32, 16, 22, 11] },
         { name: 'Par collaborateur', rows: sc, widths: [22, 14, 11, 11] }
       ],
       totals: { detailTravail: detail.slice(1).reduce(function (a, r) { return a + (r[8] === 'Travail' ? r[9].v : 0); }, 0) * DAY, parDossier: totD, parCollab: totT, pauses: totP, lignes: detail.length - 1 }

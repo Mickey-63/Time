@@ -10,7 +10,7 @@
   /* ---------- état local ---------- */
   var LS = 'pointage-v2';
   function blank() {
-    return { v: 2, token: '', me: null, lastPid: '', socs: {}, dossiers: {}, mes: [], regles: { midiMin: 60, midiEx: 30, rappelPause: 20, rappelMidi: 75 },
+    return { v: 2, token: '', me: null, lastPid: '', socs: {}, dossiers: {}, mes: [], defaut: null, regles: { midiMin: 60, midiEx: 30, rappelPause: 20, rappelMidi: 75 },
       evs: {}, dirty: {}, favs: [], lieu: 'bureau', tab: 'pointage', jour: null, seq: 0, skew: 0 };
   }
   var S = (function () {
@@ -24,9 +24,11 @@
   var cache = null;
   function evs() { if (!cache) cache = Object.keys(S.evs).map(function (k) { return S.evs[k]; }); return cache; }
   function touch(id) { cache = null; if (id) S.dirty[id] = true; }
-  function dos(id) { return S.dossiers[id] || { nom: 'Dossier supprimé', code: '', soc: '' }; }
+  function dos(id) { return S.dossiers[id] || { nom: 'Centre supprimé', code: '', soc: '' }; }
   function socCourt(id) { return S.socs[id] ? S.socs[id].court : ''; }
   function mes() { return S.mes.filter(function (id) { return S.dossiers[id]; }); }
+  // Centre par défaut : la journée commence dessus, on change ensuite au fil du travail.
+  function defaut() { return S.defaut && mes().indexOf(S.defaut) >= 0 ? S.defaut : null; }
 
   /* ---------- synchronisation ---------- */
   var syncing = false, again = false, netErr = false, online = navigator.onLine !== false;
@@ -46,7 +48,7 @@
       r.events.forEach(function (e) { next[e.id] = e; });
       Object.keys(S.dirty).forEach(function (id) { if (S.evs[id]) next[id] = S.evs[id]; });
       S.evs = next; cache = null;
-      S.me = r.me; S.socs = r.socs; S.mes = r.mes; S.regles = r.regles;
+      S.me = r.me; S.socs = r.socs; S.mes = r.mes; S.defaut = r.defaut || null; S.regles = r.regles;
       S.dossiers = {}; r.dossiers.forEach(function (d) { S.dossiers[d.id] = d; });
     }, function (err) {
       if (err.status === 401) { S.token = ''; S.me = null; loginErr = err.message; loadPeople(); }
@@ -101,7 +103,7 @@
   }
   function doAct(a) {
     var list = evs(), ctx = E.ctxOf(list);
-    if (a.type === 'dossier' && mes().indexOf(a.d) < 0) return; // dossier non affecté : refusé
+    if (a.type === 'dossier' && mes().indexOf(a.d) < 0) return; // centre non affecté : refusé
     if (a.type === 'reprendre' && ctx && S.lieuPause) ctx.lieu = S.lieuPause;
     var r = E.act(list, ctx, a, now(), function () { return { id: uid(), pid: S.me.id, seq: ++S.seq, rev: 0 }; });
     if (!r.ev) return; // double appui : rien de plus
@@ -143,7 +145,7 @@
       h += '<div class="mute">' + (loadErr ? 'Serveur injoignable. Vérifie la connexion.' : 'Chargement…') + '</div>';
       if (loadErr) h += '<button class="btn full" data-act="reload">Réessayer</button>';
     } else if (!people.length) {
-      h += '<div class="note">' + (configured ? 'Aucun employé n’est encore enregistré.' : 'Le site n’est pas encore configuré.') + ' L’administration crée les employés et leurs dossiers.</div><a class="btn full" href="admin.html">Ouvrir l’administration</a>';
+      h += '<div class="note">' + (configured ? 'Aucun employé n’est encore enregistré.' : 'Le site n’est pas encore configuré.') + ' L’administration crée les employés et leurs centres.</div><a class="btn full" href="admin.html">Ouvrir l’administration</a>';
     } else {
       h += '<label class="f" for="lg-pid">Qui es-tu ?<select id="lg-pid">' + people.map(function (p) {
         return '<option value="' + esc(p.id) + '"' + (p.id === S.lastPid ? ' selected' : '') + '>' + esc(p.prenom + ' ' + p.nom) + '</option>';
@@ -162,7 +164,7 @@
     if (st.t === 'travail') {
       var d = dos(st.d), t0 = Math.max(st.since, E.dayStart(today)), closed = (tt.parDossier[st.d] || 0) - (t - t0);
       sub = esc(d.nom) + (socCourt(d.soc) ? ' · ' + esc(socCourt(d.soc)) : '');
-      meta = '<span>depuis ' + E.hhmm(st.since) + '</span><span>Ce dossier aujourd’hui ' + tick(closed, t0) + '</span>';
+      meta = '<span>depuis ' + E.hhmm(st.since) + '</span><span>Ce centre aujourd’hui ' + tick(closed, t0) + '</span>';
     } else if (st.t === 'pause') {
       sub = esc((ctx && ctx.motif) || (st.cat === 'midi' ? 'Midi' : 'Pause'));
       meta = '<span>depuis ' + E.hhmm(st.since) + ' · ' + tick(0, st.since) + '</span>';
@@ -177,32 +179,41 @@
     return head + '<main id="main">' + body + '</main>' + (tab === 'pointage' ? cmdBar(st) : '') + tabs([['pointage', 'Pointage'], ['journee', 'Journée']], tab);
   }
   function vPointage(st, ctx, t, tt) {
-    var h = '', list = mes(), R = S.regles;
+    var h = '', list = mes(), R = S.regles, def = defaut();
+    var lieu = lieuChoisi(st, ctx);
     if (st.t === 'pause' && ctx && ctx.d) {
-      if (list.indexOf(ctx.d) >= 0) h += '<button class="resume" data-act="reprendre"><b>Reprendre · ' + esc(dos(ctx.d).nom) + '</b><span>' + (lieuChoisi(st, ctx) === 'mission' ? 'En déplacement' : 'Au bureau') + ' · une pression</span></button>';
-      else h += '<div class="note"><b>Le dossier précédent n’est plus disponible.</b> Choisis un de tes dossiers pour reprendre. Tes heures déjà faites sont conservées.</div>';
+      if (list.indexOf(ctx.d) >= 0) h += '<button class="resume" data-act="reprendre"><b>Reprendre · ' + esc(dos(ctx.d).nom) + '</b><span>' + (lieu === 'mission' ? 'En déplacement' : 'Au bureau') + ' · une pression</span></button>';
+      else h += '<div class="note"><b>Le centre précédent n’est plus disponible.</b> Choisis un de tes centres pour reprendre. Tes heures déjà faites sont conservées.</div>';
       var lim = (st.cat === 'midi' ? R.rappelMidi : R.rappelPause) * E.MIN;
       if (t - st.since > lim) h += '<div class="note">Pause en cours depuis ' + tick(0, st.since) + '. Poursuis-la ou reprends : ce rappel ne change jamais ton statut.</div>';
     }
-    if (st.t === 'cafe') h += '<div class="note">Café avant travail : ce temps n’est compté ni comme travail ni comme pause. Touche un dossier pour commencer.</div>';
+    // Journée pas commencée (ou café) : un seul geste pour démarrer sur le centre par défaut.
+    if ((st.t === 'absent' || st.t === 'cafe') && def) {
+      h += '<button class="resume go" data-act="dossier" data-d="' + esc(def) + '"><b>Commencer la journée</b><span>Sur « ' + esc(dos(def).nom) + ' » · ' + (lieu === 'mission' ? 'en déplacement' : 'au bureau') + '</span></button>';
+    }
+    if (st.t === 'cafe') h += '<div class="note">Café avant travail : ce temps n’est compté ni comme travail ni comme pause. ' + (def ? 'Touche Commencer la journée ou un centre.' : 'Touche un centre pour commencer.') + '</div>';
+    if (st.t === 'travail' && def && st.d === def) h += '<div class="mute small">Dès qu’une tâche dépasse 15 minutes, touche le centre concerné : le temps lui sera chargé.</div>';
     if (st.t === 'travail' && (t - st.since > 11 * E.H)) h += '<div class="note warn"><b>Fin de journée oubliée ?</b> Touche Fin de journée, puis corrige l’heure réelle dans Journée. Rien n’est retiré automatiquement.</div>';
-    var lieu = lieuChoisi(st, ctx);
     h += '<div class="seg" role="group" aria-label="Lieu de travail"><button data-act="lieu" data-l="bureau" aria-pressed="' + (lieu === 'bureau') + '">' + ic('bureau') + 'Au bureau</button><button data-act="lieu" data-l="mission" aria-pressed="' + (lieu === 'mission') + '">' + ic('mission') + 'En déplacement</button></div>';
-    if (!list.length) return h + '<div class="note">Aucun dossier ne t’est affecté pour le moment. L’administration les attribue ; ils apparaissent ici tout seuls.</div>';
-    if (list.length > 6) h += '<input class="search" id="q-dos" type="search" placeholder="Chercher un immeuble ou un dossier" aria-label="Chercher un dossier" autocomplete="off">';
+    if (!list.length) return h + '<div class="note">Aucun centre ne t’est affecté pour le moment. L’administration les attribue ; ils apparaissent ici tout seuls.</div>';
+    if (list.length > 6) h += '<input class="search" id="q-dos" type="search" placeholder="Chercher une adresse ou un centre" aria-label="Chercher un centre" autocomplete="off">';
     var favs = S.favs || [];
-    var sorted = list.slice().sort(function (a, b) { return (favs.indexOf(b) >= 0) - (favs.indexOf(a) >= 0) || dos(a).nom.localeCompare(dos(b).nom, 'fr'); });
+    var tri = function (a, b) { return ((b === def) - (a === def)) || ((favs.indexOf(b) >= 0) - (favs.indexOf(a) >= 0)) || dos(a).nom.localeCompare(dos(b).nom, 'fr', { numeric: true }); };
     var col = st.code === 'mission' ? 'bleu' : 'vert', today = E.dayKey(t);
-    h += '<div class="sec"><span>Mes dossiers</span><span>' + list.length + ' affecté' + (list.length > 1 ? 's' : '') + '</span></div><div class="grid" style="--st:var(--' + col + ');--on-st:var(--on-' + col + ')">';
-    sorted.forEach(function (id) {
+    var tuile = function (id) {
       var d = dos(id), on = st.t === 'travail' && st.d === id, wait = st.t === 'pause' && ctx && ctx.d === id, ms = tt.parDossier[id] || 0, fav = favs.indexOf(id) >= 0;
       var t0 = on ? Math.max(st.since, E.dayStart(today)) : 0;
-      h += '<div class="dos' + (on ? ' on' : '') + (wait ? ' wait' : '') + '" data-name="' + esc((d.nom + ' ' + d.code + ' ' + socCourt(d.soc)).toLowerCase()) + '">' +
+      return '<div class="dos' + (on ? ' on' : '') + (wait ? ' wait' : '') + '" data-name="' + esc((d.nom + ' ' + d.code + ' ' + socCourt(d.soc)).toLowerCase()) + '">' +
         '<button class="hit" data-act="dossier" data-d="' + esc(id) + '" aria-pressed="' + on + '" aria-label="' + esc(d.nom + (on ? ', en cours' : '')) + '">' +
-        '<span class="nm">' + esc(d.nom) + '</span><span class="ft"><span class="tag">' + esc(socCourt(d.soc)) + '</span><span>' + (on ? tick(ms - (t - t0), t0) : (ms ? E.dur(ms) : '')) + '</span></span></button>' +
+        '<span class="nm">' + esc(d.nom) + '</span><span class="ft"><span class="tag">' + (id === def ? 'par défaut' : esc(socCourt(d.soc))) + '</span><span>' + (on ? tick(ms - (t - t0), t0) : (ms ? E.dur(ms) : '')) + '</span></span></button>' +
         '<button class="fav" data-act="fav" data-d="' + esc(id) + '" aria-pressed="' + fav + '" aria-label="' + (fav ? 'Retirer des favoris' : 'Ajouter aux favoris') + '">' + ic('star') + '</button></div>';
-    });
-    return h + '</div>';
+    };
+    var bloc = function (titre, ids) {
+      if (!ids.length) return '';
+      return '<div class="sec"><span>' + titre + '</span><span>' + ids.length + '</span></div><div class="grid" style="--st:var(--' + col + ');--on-st:var(--on-' + col + ')">' + ids.sort(tri).map(tuile).join('') + '</div>';
+    };
+    var com = list.filter(function (id) { return dos(id).commun; }), att = list.filter(function (id) { return !dos(id).commun; });
+    return h + bloc('Centres communs', com) + bloc('Mes centres', att);
   }
   function cmdBar(st) {
     var b = function (act, icn, lab, cls) { return '<button data-act="' + act + '" class="' + (cls || '') + '">' + ic(icn) + '<span>' + lab + '</span></button>'; };
@@ -241,7 +252,7 @@
     h += '<div class="card"><div class="sec"><span>Relevé du jour</span><span>heures réelles</span></div>' + timeline(date, t) + '</div>';
     var parD = Object.keys(tot.parDossier);
     if (parD.length) {
-      h += '<div class="card"><div class="sec"><span>Par dossier</span></div>';
+      h += '<div class="card"><div class="sec"><span>Par centre</span></div>';
       parD.sort(function (a, b) { return tot.parDossier[b] - tot.parDossier[a]; }).forEach(function (id) {
         h += '<div class="row"><div>' + esc(dos(id).nom) + (dos(id).code ? '<div class="mute small">' + esc(dos(id).code) + '</div>' : '') + '</div><b>' + E.dur(tot.parDossier[id]) + '</b></div>';
       });

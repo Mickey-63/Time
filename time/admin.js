@@ -1,4 +1,4 @@
-/* Administration : employés, dossiers (chantiers, immeubles, centres analytiques), affectations, export Excel, réglages.
+/* Administration : employés, centres analytiques (communs à tous ou attribués), affectations, export Excel, réglages.
    Protégée par un mot de passe créé à la première ouverture ; il n'existe que sur le serveur, sous forme hachée. */
 (function () {
   'use strict';
@@ -28,6 +28,8 @@
   }
   function loadCfg() { return call('cfg').then(function (r) { cfg = r; }, function () { }); }
   function socNom(id) { return cfg.socs[id] ? cfg.socs[id].court : id; }
+  function dosById(id) { return cfg.dossiers.filter(function (d) { return d.id === id; })[0]; }
+  function byNom(a, b) { return a.nom.localeCompare(b.nom, 'fr', { numeric: true }); }
   function byName(a, b) { return (a.prenom + ' ' + a.nom).localeCompare(b.prenom + ' ' + b.nom, 'fr'); }
 
   /* ---------- vues ---------- */
@@ -38,7 +40,7 @@
     var h = head('Pointage GIOT Immobilier SA et OptimalGo SA') + '<main id="main">';
     if (pret === null) return h + '<div class="mute">' + (loadErr ? 'Serveur injoignable.' : 'Chargement…') + '</div>' + (loadErr ? '<button class="btn" data-act="retry">Réessayer</button>' : '') + '</main>';
     if (!pret) {
-      h += '<div class="card"><h3>Créer le mot de passe d’administration</h3><div class="mute">Première ouverture : ce mot de passe protège les employés, les dossiers et les exports. Il n’est enregistré que sur votre serveur. Au moins 8 caractères.</div>' +
+      h += '<div class="card"><h3>Créer le mot de passe d’administration</h3><div class="mute">Première ouverture : ce mot de passe protège les employés, les centres analytiques et les exports. Il n’est enregistré que sur votre serveur. Au moins 8 caractères.</div>' +
         '<label class="f" for="pw1">Mot de passe<input id="pw1" type="password" autocomplete="new-password"></label>' +
         '<label class="f" for="pw2">Confirmer<input id="pw2" type="password" autocomplete="new-password"></label>' +
         (err ? '<div class="err" role="alert">' + esc(err) + '</div>' : '') +
@@ -51,7 +53,7 @@
     return h + '<a class="lnk" href="etat.html">Voir le tableau d’équipe</a></main>';
   }
   function tabsBar() {
-    var list = [['employes', 'Employés'], ['dossiers', 'Dossiers'], ['export', 'Export Excel'], ['reglages', 'Réglages']];
+    var list = [['employes', 'Employés'], ['dossiers', 'Centres'], ['export', 'Export Excel'], ['reglages', 'Réglages']];
     return '<nav class="tabs" aria-label="Sections">' + list.map(function (t) { return '<button data-act="tab" data-t="' + t[0] + '" aria-current="' + (t[0] === tab) + '">' + t[1] + '</button>'; }).join('') + '</nav>';
   }
   function vEmployes() {
@@ -59,25 +61,29 @@
     if (!cfg.employes.length) return h + '<div class="note">Aucun employé pour l’instant. Chaque employé se connecte ensuite sur la page de pointage avec son nom et son code PIN.</div>';
     h += '<div class="card lst">';
     cfg.employes.slice().sort(byName).forEach(function (e) {
-      var nb = e.tous ? 'tous les dossiers' : (e.dossiers.length + ' dossier' + (e.dossiers.length > 1 ? 's' : ''));
+      var nA = e.dossiers.filter(function (id) { var d = dosById(id); return d && d.actif && !d.commun; }).length;
+      var nC = cfg.dossiers.filter(function (d) { return d.actif && d.commun && e.socs.indexOf(d.soc) >= 0; }).length;
+      var nb = e.tous ? 'tous les centres' : (!nC && !nA ? 'aucun centre' : [nC ? 'centres communs' : '', nA ? nA + ' attribué' + (nA > 1 ? 's' : '') : ''].filter(Boolean).join(' + '));
       h += '<div class="row' + (e.actif ? '' : ' off') + '"><div><div class="nm">' + esc(e.prenom + ' ' + e.nom) + '</div><div class="mute small">' + esc(e.socs.map(socNom).join(' et ')) + ' · ' + nb + (e.midi ? ' · midi 60 min' : '') + (e.actif ? '' : ' · désactivé') + '</div></div>' +
         '<button class="btn ghost sm" data-act="emp-edit" data-id="' + esc(e.id) + '">Modifier</button></div>';
     });
     return h + '</div>';
   }
   function vDossiers() {
-    var h = '<button class="btn full" data-act="dos-new">Ajouter un dossier</button>' +
-      '<div class="mute small">Un dossier est ce sur quoi on charge le temps : chantier, immeuble ou centre analytique. Le code analytique figure dans l’export Excel.</div>';
-    if (!cfg.dossiers.length) return h + '<div class="note">Aucun dossier pour l’instant. Sans dossier, personne ne peut pointer.</div>';
+    var h = '<div class="btns"><button class="btn" data-act="dos-new">Ajouter un centre</button><button class="btn ghost" data-act="imp-new">Importer une liste</button></div>' +
+      '<div class="mute small">Un centre analytique est ce sur quoi on charge le temps : adresse d’immeuble, chantier ou centre général. Les centres communs sont proposés d’office à tous les employés de la société ; les autres s’attribuent employé par employé.</div>';
+    if (!cfg.dossiers.length) return h + '<div class="note">Aucun centre pour l’instant. Sans centre, personne ne peut pointer.</div>';
+    var ligne = function (d) {
+      return '<div class="row' + (d.actif ? '' : ' off') + '"><div><div class="nm">' + esc(d.nom) + (d.defaut ? ' <span class="badge">par défaut</span>' : '') + '</div><div class="mute small">' + (d.code ? esc(d.code) : 'sans code analytique') + (d.actif ? '' : ' · archivé') + '</div></div>' +
+        '<button class="btn ghost sm" data-act="dos-edit" data-id="' + esc(d.id) + '">Modifier</button></div>';
+    };
     Object.keys(cfg.socs).forEach(function (s) {
-      var list = cfg.dossiers.filter(function (d) { return d.soc === s; }).sort(function (a, b) { return (b.actif - a.actif) || a.nom.localeCompare(b.nom, 'fr'); });
-      if (!list.length) return;
-      h += '<div class="card lst"><div class="sec"><span>' + esc(cfg.socs[s].nom) + '</span><span>' + list.length + '</span></div>';
-      list.forEach(function (d) {
-        h += '<div class="row' + (d.actif ? '' : ' off') + '"><div><div class="nm">' + esc(d.nom) + '</div><div class="mute small">' + (d.code ? esc(d.code) : 'sans code analytique') + (d.actif ? '' : ' · archivé') + '</div></div>' +
-          '<button class="btn ghost sm" data-act="dos-edit" data-id="' + esc(d.id) + '">Modifier</button></div>';
-      });
-      h += '</div>';
+      var tri = function (a, b) { return (b.actif - a.actif) || ((b.defaut ? 1 : 0) - (a.defaut ? 1 : 0)) || byNom(a, b); };
+      var com = cfg.dossiers.filter(function (d) { return d.soc === s && d.commun; }).sort(tri), att = cfg.dossiers.filter(function (d) { return d.soc === s && !d.commun; }).sort(tri);
+      if (!com.length && !att.length) return;
+      h += '<h3 class="soc">' + esc(cfg.socs[s].nom) + '</h3>';
+      if (com.length) h += '<div class="card lst"><div class="sec"><span>Centres communs · tous les employés</span><span>' + com.length + '</span></div>' + com.map(ligne).join('') + '</div>';
+      if (att.length) h += '<div class="card lst"><div class="sec"><span>Centres à attribuer</span><span>' + att.length + '</span></div>' + att.map(ligne).join('') + '</div>';
     });
     return h;
   }
@@ -89,7 +95,7 @@
       '<label class="f" for="ex-soc">Société<select id="ex-soc" data-ex="soc">' + opt('', 'Toutes', ex.soc) + Object.keys(cfg.socs).map(function (s) { return opt(s, cfg.socs[s].nom, ex.soc); }).join('') + '</select></label>' +
       (exErr ? '<div class="err" role="alert">' + esc(exErr) + '</div>' : '') + (exMsg ? '<div class="ok-msg" role="status">' + esc(exMsg) + '</div>' : '') +
       '<button class="btn full" data-act="export"' + (busy ? ' disabled' : '') + '>' + (busy ? 'Préparation…' : 'Télécharger le classeur .xlsx') + '</button></div>' +
-      '<div class="mute small">Trois feuilles : Détail (chaque plage avec début, fin, dossier, code analytique), Par dossier, Par collaborateur. Dates et durées numériques, cumuls au-delà de 24 h, minuit ventilé sur deux dates. Une plage encore ouverte est marquée « Provisoire », une heure corrigée « Oui » dans la colonne Corrigé.</div>';
+      '<div class="mute small">Trois feuilles : Détail (chaque plage avec début, fin, centre, code analytique), Par centre, Par collaborateur. Dates et durées numériques, cumuls au-delà de 24 h, minuit ventilé sur deux dates. Une plage encore ouverte est marquée « Provisoire », une heure corrigée « Oui » dans la colonne Corrigé.</div>';
   }
   function vReglages() {
     var R = cfg.regles, base = location.href.replace(/[^/]*([?#].*)?$/, '');
@@ -116,22 +122,40 @@
         '<div class="two"><label class="f" for="e-prenom">Prénom<input id="e-prenom" data-f="prenom" maxlength="40" value="' + esc(x.prenom) + '"></label><label class="f" for="e-nom">Nom<input id="e-nom" data-f="nom" maxlength="40" value="' + esc(x.nom) + '"></label></div>' +
         '<label class="f" for="e-pin">Code PIN (4 à 8 chiffres)<input id="e-pin" data-f="pin" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="' + (x.id ? 'Laisser vide pour le conserver' : 'Obligatoire') + '" value="' + esc(x.pin || '') + '"></label>' +
         '<div class="sec"><span>Société</span></div><div class="checks">' + Object.keys(cfg.socs).map(function (s) { return chk('data-soc="' + s + '"', x.socs.indexOf(s) >= 0, esc(cfg.socs[s].nom)); }).join('') + '</div>' +
-        '<div class="sec"><span>Dossiers où il charge son temps</span></div>' + chk('data-b="tous"', x.tous, 'Tous les dossiers de sa société, y compris les futurs');
+        '<div class="sec"><span>Centres où il charge son temps</span></div>';
+      var com = cfg.dossiers.filter(function (d) { return d.actif && d.commun && x.socs.indexOf(d.soc) >= 0; }).sort(function (a, b) { return ((b.defaut ? 1 : 0) - (a.defaut ? 1 : 0)) || byNom(a, b); });
+      h += '<div class="mute small">' + (com.length ? 'Inclus d’office (centres communs) : ' + com.map(function (d) { return esc(d.nom) + (d.defaut ? ' (par défaut)' : ''); }).join(', ') + '.' : 'Aucun centre commun pour sa société.') + '</div>' +
+        chk('data-b="tous"', x.tous, 'Tous les centres de sa société, y compris les futurs');
       if (!x.tous) {
-        var list = cfg.dossiers.filter(function (d) { return x.socs.indexOf(d.soc) >= 0 && (d.actif || x.dossiers.indexOf(d.id) >= 0); }).sort(function (a, b) { return a.nom.localeCompare(b.nom, 'fr'); });
-        h += list.length ? '<div class="checks">' + list.map(function (d) { return chk('data-dos="' + esc(d.id) + '"', x.dossiers.indexOf(d.id) >= 0, esc(d.nom) + (d.code ? ' <span class="mute small">' + esc(d.code) + '</span>' : '') + (d.actif ? '' : ' <span class="mute small">archivé</span>')); }).join('') + '</div>'
-          : '<div class="mute small">Aucun dossier pour cette société. Créez-les dans l’onglet Dossiers.</div>';
+        var list = cfg.dossiers.filter(function (d) { return !d.commun && x.socs.indexOf(d.soc) >= 0 && (d.actif || x.dossiers.indexOf(d.id) >= 0); }).sort(byNom);
+        var q = (sheet.q || '').trim().toLowerCase(), nSel = list.filter(function (d) { return x.dossiers.indexOf(d.id) >= 0; }).length;
+        if (list.length) {
+          h += '<div class="row"><span class="mute small" id="e-cnt">' + nSel + ' sur ' + list.length + ' cochés</span><span class="btns"><button class="btn ghost sm" data-act="emp-all">Tout cocher</button><button class="btn ghost sm" data-act="emp-none">Tout décocher</button></span></div>' +
+            (list.length > 8 ? '<input class="search" id="e-q" type="search" placeholder="Chercher une adresse ou un centre" aria-label="Chercher un centre" autocomplete="off" value="' + esc(sheet.q || '') + '">' : '') +
+            '<div class="checks tall">' + list.map(function (d) {
+              var nm = (d.nom + ' ' + (d.code || '')).toLowerCase();
+              return '<label class="chk" data-name="' + esc(nm) + '"' + (q && nm.indexOf(q) < 0 ? ' hidden' : '') + '><input type="checkbox" data-dos="' + esc(d.id) + '"' + (x.dossiers.indexOf(d.id) >= 0 ? ' checked' : '') + '>' + esc(d.nom) + (d.code ? ' <span class="mute small">' + esc(d.code) + '</span>' : '') + (d.actif ? '' : ' <span class="mute small">archivé</span>') + '</label>';
+            }).join('') + '</div>';
+        } else h += '<div class="mute small">Aucun centre à attribuer pour cette société. Créez-les ou importez-les dans l’onglet Centres.</div>';
       }
       h += chk('data-b="midi"', x.midi, 'Midi obligatoire de ' + cfg.regles.midiMin + ' min (règle GIOT)') + chk('data-b="actif"', x.actif, 'Actif : peut pointer et figure au tableau d’équipe');
     } else if (sheet.type === 'dos') {
-      h += '<h2>' + (x.id ? 'Modifier le dossier' : 'Nouveau dossier') + '</h2>' +
-        '<label class="f" for="d-nom">Nom (chantier, immeuble, centre)<input id="d-nom" data-f="nom" maxlength="60" value="' + esc(x.nom) + '"></label>' +
-        '<label class="f" for="d-code">Code analytique<input id="d-code" data-f="code" maxlength="30" value="' + esc(x.code) + '"></label>' +
+      h += '<h2>' + (x.id ? 'Modifier le centre' : 'Nouveau centre') + '</h2>' +
+        '<label class="f" for="d-nom">Nom (adresse de l’immeuble, chantier, centre général)<input id="d-nom" data-f="nom" maxlength="60" value="' + esc(x.nom) + '"></label>' +
+        '<label class="f" for="d-code">Code analytique (facultatif)<input id="d-code" data-f="code" maxlength="30" value="' + esc(x.code) + '"></label>' +
         '<label class="f" for="d-soc">Société<select id="d-soc" data-f="soc">' + Object.keys(cfg.socs).map(function (s) { return '<option value="' + s + '"' + (s === x.soc ? ' selected' : '') + '>' + esc(cfg.socs[s].nom) + '</option>'; }).join('') + '</select></label>' +
+        chk('data-b="commun"', x.commun || x.defaut, 'Centre commun : proposé d’office à tous les employés de la société') +
+        chk('data-b="defaut"', x.defaut, 'Centre par défaut : la journée commence dessus (un seul par société)') +
         chk('data-b="actif"', x.actif, 'Actif : proposé au pointage (décocher pour archiver)');
+    } else if (sheet.type === 'imp') {
+      h += '<h2>Importer une liste de centres</h2>' +
+        '<label class="f" for="i-soc">Société<select id="i-soc" data-f="soc">' + Object.keys(cfg.socs).map(function (s) { return '<option value="' + s + '"' + (s === x.soc ? ' selected' : '') + '>' + esc(cfg.socs[s].nom) + '</option>'; }).join('') + '</select></label>' +
+        '<label class="f" for="i-txt">Un centre par ligne<textarea id="i-txt" data-f="txt" rows="9" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="BATAILLES 18 - VERNIER&#10;JONCTION 9&#10;…">' + esc(x.txt) + '</textarea></label>' +
+        '<div class="mute small">Collez la liste telle quelle. Pour ajouter un code analytique, écrivez-le après un point-virgule : « Nom ; code ». Les centres déjà présents sont ignorés.</div>' +
+        chk('data-b="commun"', x.commun, 'Centres communs : proposés d’office à tous les employés');
     }
     h += (sheet.err ? '<div class="err" role="alert">' + esc(sheet.err) + '</div>' : '') +
-      '<button class="btn full" data-act="' + sheet.type + '-save"' + (busy ? ' disabled' : '') + '>Enregistrer</button>' +
+      '<button class="btn full" data-act="' + sheet.type + '-save"' + (busy ? ' disabled' : '') + '>' + (sheet.type === 'imp' ? 'Importer' : 'Enregistrer') + '</button>' +
       (x.id ? '<button class="btn ghost full" data-act="' + sheet.type + '-del"' + (busy ? ' disabled' : '') + '>Supprimer</button>' : '');
     return '<div class="veil" data-act="close-veil"><div class="sheet" role="dialog" aria-modal="true">' + h + '<button class="btn ghost full" data-act="close">Fermer</button></div></div>';
   }
@@ -140,13 +164,23 @@
     if (!cfg) { root.innerHTML = vGate(); return; }
     var body = tab === 'dossiers' ? vDossiers() : tab === 'export' ? vExport() : tab === 'reglages' ? vReglages() : vEmployes();
     var actifs = cfg.employes.filter(function (e) { return e.actif; }).length, dAct = cfg.dossiers.filter(function (d) { return d.actif; }).length;
-    root.innerHTML = head(actifs + ' employé' + (actifs > 1 ? 's' : '') + ' actif' + (actifs > 1 ? 's' : '') + ', ' + dAct + ' dossier' + (dAct > 1 ? 's' : '') + ' ouvert' + (dAct > 1 ? 's' : '')) +
+    root.innerHTML = head(actifs + ' employé' + (actifs > 1 ? 's' : '') + ' actif' + (actifs > 1 ? 's' : '') + ', ' + dAct + ' centre' + (dAct > 1 ? 's' : '') + ' actif' + (dAct > 1 ? 's' : '')) +
       '<main id="main">' + (flash ? '<div class="ok-msg" role="status">' + esc(flash) + '</div>' : '') + body + '</main>' + tabsBar() + vSheet();
     m = document.getElementById('main'); if (m) m.scrollTop = sc;
     sh = root.querySelector('.sheet'); if (sh) sh.scrollTop = ssc;
   }
 
   /* ---------- actions ---------- */
+  function empCoche(on) {
+    var x = sheet.x, q = (sheet.q || '').trim().toLowerCase();
+    cfg.dossiers.forEach(function (d) {
+      if (d.commun || !d.actif || x.socs.indexOf(d.soc) < 0) return;
+      if (q && (d.nom + ' ' + (d.code || '')).toLowerCase().indexOf(q) < 0) return; // seulement ce que la recherche affiche
+      var k = x.dossiers.indexOf(d.id);
+      if (on && k < 0) x.dossiers.push(d.id);
+      if (!on && k >= 0) x.dossiers.splice(k, 1);
+    });
+  }
   function val(id) { var el = document.getElementById(id); return el ? el.value : ''; }
   function run(p, okMsg) {
     busy = true; render();
@@ -176,7 +210,7 @@
       return false;
     },
     alogout: function () { var t = token; setToken(''); cfg = null; err = ''; flash = ''; api('logout', { token: t }).catch(function () { }); },
-    'emp-new': function () { sheet = { type: 'emp', x: { id: '', prenom: '', nom: '', pin: '', socs: Object.keys(cfg.socs).slice(0, 1), tous: true, dossiers: [], midi: false, actif: true } }; },
+    'emp-new': function () { sheet = { type: 'emp', x: { id: '', prenom: '', nom: '', pin: '', socs: Object.keys(cfg.socs).slice(0, 1), tous: false, dossiers: [], midi: false, actif: true } }; },
     'emp-edit': function (ds) {
       var e = cfg.employes.filter(function (p) { return p.id === ds.id; })[0]; if (!e) return;
       sheet = { type: 'emp', x: { id: e.id, prenom: e.prenom, nom: e.nom, pin: '', socs: e.socs.slice(), tous: !!e.tous, dossiers: (e.dossiers || []).slice(), midi: !!e.midi, actif: !!e.actif } };
@@ -200,17 +234,36 @@
       run(call('emp_del', { id: id }), 'Employé supprimé.').then(function () { cfg.employes = cfg.employes.filter(function (p) { return p.id !== id; }); sheet = null; }, function (e) { if (sheet) { sheet.err = msgOf(e); sheet.sure = false; } }).then(render);
       return false;
     },
-    'dos-new': function () { sheet = { type: 'dos', x: { id: '', nom: '', code: '', soc: sheet && sheet.x ? sheet.x.soc : (cfg.lastSoc || Object.keys(cfg.socs)[0]), actif: true } }; },
+    'emp-all': function () { empCoche(true); },
+    'emp-none': function () { empCoche(false); },
+    'dos-new': function () { sheet = { type: 'dos', x: { id: '', nom: '', code: '', soc: cfg.lastSoc || Object.keys(cfg.socs)[0], actif: true, commun: false, defaut: false } }; },
+    'imp-new': function () { sheet = { type: 'imp', x: { soc: cfg.lastSoc || Object.keys(cfg.socs)[0], txt: '', commun: false } }; },
+    'imp-save': function () {
+      var x = sheet.x, vus = {}, items = [];
+      x.txt.split(/\r?\n/).forEach(function (l) {
+        var m = l.split(/[;\t]/), nom = (m[0] || '').replace(/\s+/g, ' ').trim(), code = (m[1] || '').trim();
+        if (!nom || vus[nom.toLowerCase()]) return;
+        vus[nom.toLowerCase()] = true; items.push({ nom: nom, code: code });
+      });
+      sheet.err = '';
+      if (!items.length) { sheet.err = 'Collez au moins une ligne.'; return; }
+      var trop = items.filter(function (i) { return i.nom.length > 60; });
+      if (trop.length) { sheet.err = 'Nom trop long (60 caractères au maximum) : ' + trop[0].nom; return; }
+      run(call('dos_import', { soc: x.soc, commun: x.commun, items: items })).then(function (r) {
+        cfg.dossiers = r.dossiers; cfg.lastSoc = x.soc; sheet = null;
+        flash = r.ajoutes + ' centre' + (r.ajoutes > 1 ? 's' : '') + ' ajouté' + (r.ajoutes > 1 ? 's' : '') + (r.doublons ? ', ' + r.doublons + ' déjà présent' + (r.doublons > 1 ? 's' : '') + ' ignoré' + (r.doublons > 1 ? 's' : '') : '') + '.';
+      }, function (e) { if (sheet) sheet.err = msgOf(e); }).then(render);
+      return false;
+    },
     'dos-edit': function (ds) {
       var d = cfg.dossiers.filter(function (p) { return p.id === ds.id; })[0]; if (!d) return;
-      sheet = { type: 'dos', x: { id: d.id, nom: d.nom, code: d.code || '', soc: d.soc, actif: !!d.actif } };
+      sheet = { type: 'dos', x: { id: d.id, nom: d.nom, code: d.code || '', soc: d.soc, actif: !!d.actif, commun: !!d.commun, defaut: !!d.defaut } };
     },
     'dos-save': function () {
       var x = sheet.x; sheet.err = '';
       if (!x.nom.trim()) { sheet.err = 'Le nom est obligatoire.'; return; }
-      run(call('dos_save', { dos: x }), 'Dossier enregistré.').then(function (r) {
-        var i = -1; cfg.dossiers.forEach(function (p, k) { if (p.id === r.dos.id) i = k; });
-        if (i >= 0) cfg.dossiers[i] = r.dos; else cfg.dossiers.push(r.dos);
+      run(call('dos_save', { dos: x }), 'Centre enregistré.').then(function (r) {
+        cfg.dossiers = r.dossiers; // le serveur renvoie la liste : un nouveau centre par défaut retire l'ancien
         cfg.lastSoc = r.dos.soc; sheet = null;
       }, function (e) { if (sheet) sheet.err = msgOf(e); }).then(render);
       return false;
@@ -218,7 +271,7 @@
     'dos-del': function () {
       if (!sheet.sure) { sheet.sure = true; sheet.err = 'Appuyez une seconde fois sur Supprimer pour confirmer.'; return; }
       var id = sheet.x.id;
-      run(call('dos_del', { id: id }), 'Dossier supprimé.').then(function () {
+      run(call('dos_del', { id: id }), 'Centre supprimé.').then(function () {
         cfg.dossiers = cfg.dossiers.filter(function (p) { return p.id !== id; });
         cfg.employes.forEach(function (p) { p.dossiers = (p.dossiers || []).filter(function (d) { return d !== id; }); });
         sheet = null;
@@ -269,6 +322,11 @@
   });
   root.addEventListener('input', function (ev) {
     var t = ev.target;
+    if (sheet && t.id === 'e-q') {
+      sheet.q = t.value; var q = t.value.trim().toLowerCase();
+      Array.prototype.forEach.call(root.querySelectorAll('.checks .chk[data-name]'), function (el) { el.hidden = !!q && el.getAttribute('data-name').indexOf(q) < 0; });
+      return;
+    }
     if (sheet && t.hasAttribute('data-f') && t.tagName !== 'SELECT') sheet.x[t.getAttribute('data-f')] = t.value;
   });
   root.addEventListener('change', function (ev) {
@@ -279,7 +337,10 @@
     if (t.hasAttribute('data-f')) { x[t.getAttribute('data-f')] = t.value; return; }
     if (t.hasAttribute('data-b')) x[t.getAttribute('data-b')] = t.checked;
     else if (t.hasAttribute('data-soc')) { var s = t.getAttribute('data-soc'), i = x.socs.indexOf(s); if (t.checked && i < 0) x.socs.push(s); if (!t.checked && i >= 0) x.socs.splice(i, 1); }
-    else if (t.hasAttribute('data-dos')) { var d = t.getAttribute('data-dos'), k = x.dossiers.indexOf(d); if (t.checked && k < 0) x.dossiers.push(d); if (!t.checked && k >= 0) x.dossiers.splice(k, 1); return; }
+    else if (t.hasAttribute('data-dos')) { var d = t.getAttribute('data-dos'), k = x.dossiers.indexOf(d); if (t.checked && k < 0) x.dossiers.push(d); if (!t.checked && k >= 0) x.dossiers.splice(k, 1);
+      var c = document.getElementById('e-cnt'), bs = root.querySelectorAll('.checks input[data-dos]');
+      if (c) c.textContent = root.querySelectorAll('.checks input[data-dos]:checked').length + ' sur ' + bs.length + ' cochés';
+      return; }
     else return;
     render();
   });

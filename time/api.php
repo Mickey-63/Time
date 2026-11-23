@@ -71,9 +71,35 @@ function mesDossiers(array $e, array $c): array {
   $o = [];
   foreach ($c['dossiers'] as $d) {
     if (empty($d['actif']) || !in_array($d['soc'], $e['socs'], true)) continue;
-    if (!empty($e['tous']) || in_array($d['id'], $e['dossiers'] ?? [], true)) $o[] = $d['id'];
+    if (!empty($d['commun']) || !empty($e['tous']) || in_array($d['id'], $e['dossiers'] ?? [], true)) $o[] = $d['id'];
   }
   return $o;
+}
+/* Centre par défaut de l'employé : celui sur lequel la journée commence. */
+function defautDe(array $e, array $c): ?string {
+  foreach ($e['socs'] as $s) foreach ($c['dossiers'] as $d) {
+    if ($d['soc'] === $s && !empty($d['defaut']) && !empty($d['actif'])) return $d['id'];
+  }
+  return null;
+}
+function nomCle(string $s): string { return function_exists('mb_strtolower') ? mb_strtolower(trim($s), 'UTF-8') : strtolower(trim($s)); }
+/* Première mise en place des centres communs GIOT (une seule fois). Tout reste modifiable dans l'administration. */
+function semis(): void {
+  if ((rd('cfg', [])['semis'] ?? 0) >= 1) return;
+  lock();
+  $c = cfg();
+  if (($c['semis'] ?? 0) >= 1) return;
+  $aDefaut = false;
+  foreach ($c['dossiers'] as $d) if ($d['soc'] === 'gi' && !empty($d['defaut'])) $aDefaut = true;
+  foreach (['Travail courant', 'Véhicules', 'Chantiers', 'Divers', 'Immobilier', 'OptimalGo'] as $k => $nom) {
+    $i = -1;
+    foreach ($c['dossiers'] as $j => $d) if ($d['soc'] === 'gi' && nomCle($d['nom']) === nomCle($nom)) $i = $j;
+    if ($i < 0) { $c['dossiers'][] = ['id' => newId('d'), 'nom' => $nom, 'code' => '', 'soc' => 'gi', 'actif' => true, 'commun' => true, 'defaut' => false]; $i = count($c['dossiers']) - 1; }
+    else $c['dossiers'][$i]['commun'] = true;
+    if ($k === 0 && !$aDefaut) { $c['dossiers'][$i]['defaut'] = true; $c['dossiers'][$i]['actif'] = true; }
+  }
+  $c['semis'] = 1;
+  wr('cfg', $c);
 }
 function ip(): string { return (string) ($_SERVER['REMOTE_ADDR'] ?? '?'); }
 
@@ -177,6 +203,7 @@ function etatSet(string $pid, array $evs): void {
 
 /* ---------- requête ---------- */
 boot();
+semis();
 $a = (string) ($_GET['a'] ?? '');
 $in = json_decode((string) file_get_contents('php://input'), true);
 if (!is_array($in)) $in = [];
@@ -258,11 +285,11 @@ switch ($a) {
     $recent = [];
     foreach ($evs as $x) if ($x['ts'] >= $min) { unset($x['srv']); $recent[] = $x; }
     $dl = [];
-    foreach ($c['dossiers'] as $d) $dl[] = ['id' => $d['id'], 'nom' => $d['nom'], 'code' => $d['code'], 'soc' => $d['soc']];
+    foreach ($c['dossiers'] as $d) $dl[] = ['id' => $d['id'], 'nom' => $d['nom'], 'code' => $d['code'], 'soc' => $d['soc'], 'commun' => !empty($d['commun'])];
     out([
       'now' => NOW,
       'me' => ['id' => $e['id'], 'prenom' => $e['prenom'], 'nom' => $e['nom'], 'socs' => $e['socs'], 'midi' => !empty($e['midi'])],
-      'socs' => $c['socs'], 'dossiers' => $dl, 'mes' => mesDossiers($e, $c), 'regles' => $c['regles'], 'events' => $recent,
+      'socs' => $c['socs'], 'dossiers' => $dl, 'mes' => mesDossiers($e, $c), 'defaut' => defautDe($e, $c), 'regles' => $c['regles'], 'events' => $recent,
     ]);
   }
 
@@ -385,9 +412,42 @@ switch ($a) {
     if (!isset($c['socs'][$soc])) fail('Choisissez la société.');
     $d['soc'] = $soc;
     $d['actif'] = !isset($x['actif']) || !empty($x['actif']);
+    $d['commun'] = !empty($x['commun']);
+    $d['defaut'] = !empty($x['defaut']) && $d['actif'];
+    if ($d['defaut']) $d['commun'] = true; // on commence la journée dessus : forcément proposé à tous
+    foreach ($c['dossiers'] as $k => $o) {
+      if ($k !== $i && $o['soc'] === $d['soc'] && nomCle($o['nom']) === nomCle($d['nom'])) fail('Un centre porte déjà ce nom dans cette société.', 409);
+      if ($d['defaut'] && $k !== $i && $o['soc'] === $d['soc']) $c['dossiers'][$k]['defaut'] = false; // un seul centre par défaut par société
+    }
     if ($i >= 0) $c['dossiers'][$i] = $d; else $c['dossiers'][] = $d;
     wr('cfg', $c);
-    out(['dos' => $d]);
+    out(['dos' => $d, 'dossiers' => $c['dossiers']]);
+  }
+
+  case 'dos_import': {
+    needAdmin($in);
+    lock();
+    $c = cfg();
+    $soc = (string) ($in['soc'] ?? '');
+    if (!isset($c['socs'][$soc])) fail('Choisissez la société.');
+    $items = $in['items'] ?? null;
+    if (!is_array($items) || !$items) fail('La liste est vide.');
+    if (count($items) > 2000) fail('Trop de lignes en une fois (2000 au maximum).');
+    $commun = !empty($in['commun']);
+    $vus = [];
+    foreach ($c['dossiers'] as $d) if ($d['soc'] === $soc) $vus[nomCle($d['nom'])] = true;
+    $n = 0; $dbl = 0;
+    foreach ($items as $it) {
+      if (!is_array($it)) continue;
+      $nom = cut((string) ($it['nom'] ?? ''), 60);
+      if ($nom === '') continue;
+      if (isset($vus[nomCle($nom)])) { $dbl++; continue; }
+      $vus[nomCle($nom)] = true;
+      $c['dossiers'][] = ['id' => newId('d'), 'nom' => $nom, 'code' => cut((string) ($it['code'] ?? ''), 30), 'soc' => $soc, 'actif' => true, 'commun' => $commun, 'defaut' => false];
+      $n++;
+    }
+    if ($n) wr('cfg', $c);
+    out(['dossiers' => $c['dossiers'], 'ajoutes' => $n, 'doublons' => $dbl]);
   }
 
   case 'dos_del': {
