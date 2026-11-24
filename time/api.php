@@ -65,6 +65,7 @@ function cfg(): array {
     'employes' => [], 'dossiers' => [],
     'regles' => ['midiMin' => 60, 'midiEx' => 30, 'rappelPause' => 20, 'rappelMidi' => 75],
   ];
+  $c['regles'] += ['note' => false, 'noteDepuis' => 0]; // note de fin de travail : désactivée tant que l'administration ne l'active pas
   return $c;
 }
 function empIndex(array $c, string $id): int { foreach ($c['employes'] as $i => $e) if ($e['id'] === $id) return $i; return -1; }
@@ -222,6 +223,9 @@ function evClean(array $e, string $pid, array $dos): ?array {
     if (!isset($dos[$d])) return null;
     $o['d'] = $d;
     $o['lieu'] = (($e['lieu'] ?? '') === 'mission') ? 'mission' : 'bureau';
+    $note = cut((string) ($e['note'] ?? ''), 120);
+    if ($note !== '') $o['note'] = $note;
+    if (in_array($e['ci'] ?? '', ['D', 'R', 'G'], true)) $o['ci'] = $e['ci']; // D devis, R régie, G sous garantie
   }
   if ($t === 'pause') {
     $o['cat'] = (($e['cat'] ?? '') === 'midi') ? 'midi' : 'pause';
@@ -247,7 +251,7 @@ function etatSet(string $pid, array $evs): void {
   $n = count($evs);
   if ($n) {
     $l = $evs[$n - 1];
-    $et[$pid] = ['t' => $l['t'], 'd' => $l['d'] ?? null, 'lieu' => $l['lieu'] ?? null, 'ts' => $l['ts']];
+    $et[$pid] = ['t' => $l['t'], 'd' => $l['d'] ?? null, 'lieu' => $l['lieu'] ?? null, 'ts' => $l['ts'], 'cat' => $l['cat'] ?? null];
   } else unset($et[$pid]);
   wr('etat', $et);
 }
@@ -274,7 +278,12 @@ switch ($a) {
       $s = $et[$e['id']] ?? null;
       $o = ['id' => $e['id'], 'prenom' => $e['prenom'], 'nom' => $e['nom'], 'code' => 'absent', 'dossier' => null, 'since' => $s['ts'] ?? null];
       if ($s && $s['t'] === 'travail') { $o['code'] = ($s['lieu'] ?? '') === 'mission' ? 'mission' : 'bureau'; $o['dossier'] = $dn[$s['d'] ?? ''] ?? null; }
-      elseif ($s && $s['t'] === 'pause') $o['code'] = 'pause';
+      elseif ($s && $s['t'] === 'pause') {
+        $o['code'] = 'pause';
+        // Repère « pause longue » : seuils des Réglages (rappel pause, rappel midi). Aucune durée n'est transmise.
+        $lim = (int) ((($s['cat'] ?? '') === 'midi') ? $c['regles']['rappelMidi'] : $c['regles']['rappelPause']);
+        if ($lim > 0 && NOW - (int) $s['ts'] > $lim * 60000) $o['long'] = true;
+      }
       elseif ($s && $s['t'] === 'cafe') $o['since'] = null;
       $list[] = $o;
     }
@@ -633,6 +642,11 @@ switch ($a) {
     $c = cfg();
     foreach (['midiMin', 'midiEx', 'rappelPause', 'rappelMidi'] as $k) {
       if (isset($in['regles'][$k])) $c['regles'][$k] = max(0, min(240, (int) $in['regles'][$k]));
+    }
+    if (isset($in['regles']['note'])) {
+      $on = !empty($in['regles']['note']);
+      if ($on && empty($c['regles']['note'])) $c['regles']['noteDepuis'] = NOW; // seules les interventions terminées après l'activation demandent une note
+      $c['regles']['note'] = $on;
     }
     wr('cfg', $c);
     out(['regles' => $c['regles']]);

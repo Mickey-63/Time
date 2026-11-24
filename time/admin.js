@@ -107,7 +107,7 @@
       '<label class="f" for="ex-soc">Société<select id="ex-soc" data-ex="soc">' + opt('', 'Toutes', ex.soc) + Object.keys(cfg.socs).map(function (s) { return opt(s, cfg.socs[s].nom, ex.soc); }).join('') + '</select></label>' +
       (exErr ? '<div class="err" role="alert">' + esc(exErr) + '</div>' : '') + (exMsg ? '<div class="ok-msg" role="status">' + esc(exMsg) + '</div>' : '') +
       '<button class="btn full" data-act="export"' + (busy ? ' disabled' : '') + '>' + (busy ? 'Préparation…' : 'Télécharger le classeur .xlsx') + '</button></div>' +
-      '<div class="mute small">Quatre feuilles : Détail (chaque plage avec début, fin, centre, code analytique), Par centre, Par collaborateur, et Centres (la liste complète des centres et bâtiments, à garder comme sauvegarde). Dates et durées numériques, cumuls au-delà de 24 h, minuit ventilé sur deux dates. Une plage encore ouverte est marquée « Provisoire », une heure corrigée « Oui » dans la colonne Corrigé.</div>';
+      '<div class="mute small">Quatre feuilles : Détail (chaque plage avec début, fin, centre, code analytique, code d’intervention et note), Par centre, Par collaborateur, et Centres (la liste complète des centres et bâtiments, à garder comme sauvegarde). Dates et durées numériques, cumuls au-delà de 24 h, minuit ventilé sur deux dates. Une plage encore ouverte est marquée « Provisoire », une heure corrigée « Oui » dans la colonne Corrigé.</div>';
   }
   function vReglages() {
     var R = cfg.regles, base = location.href.replace(/[^/]*([?#].*)?$/, '');
@@ -117,6 +117,10 @@
       '<div class="row"><div><div>Page de pointage des employés</div><div class="mute small">' + esc(base) + '</div></div><a class="btn ghost sm" href="index.html">Ouvrir</a></div></div>' +
       '<div class="card"><div class="sec"><span>Règles</span><span>minutes</span></div><div class="two">' + num('midiMin', 'Midi obligatoire', R.midiMin) + num('midiEx', 'Exception hebdo.', R.midiEx) + num('rappelPause', 'Rappel pause', R.rappelPause) + num('rappelMidi', 'Rappel midi', R.rappelMidi) + '</div>' +
       '<div class="mute small">Pauses légales fixes : plus de 5 h 30 → 15 min, plus de 7 h → 30 min, plus de 9 h → 60 min. Les écarts sont signalés à l’employé, jamais déduits. La règle du midi ne s’applique qu’aux employés chez qui elle est cochée.</div>' +
+      '<div class="sec"><span>Note de fin de travail</span></div>' +
+      '<label class="chk"><input type="checkbox" id="rg-note"' + (R.note ? ' checked' : '') + '>Demander une note à l’employé quand il quitte un bâtiment</label>' +
+      '<div class="mute small">Deux ou trois mots sur ce qui a été fait, avec le code Devis, Régie ou Garantie (Devis par défaut). Obligatoire sur les bâtiments, possible sur les centres communs depuis l’onglet Journée. Le pointage n’est jamais retardé : l’heure est enregistrée avant que la note soit demandée. La note et le code sortent dans l’export Excel.</div>' +
+      '<div class="mute small">Tableau d’équipe : la tuile d’une personne affiche « Pause longue » quand sa pause dépasse le rappel pause, ou son midi le rappel midi. Mettre 0 pour ne rien afficher.</div>' +
       '<button class="btn" data-act="regles">Enregistrer les règles</button></div>' +
       '<div class="card"><div class="sec"><span>Mot de passe d’administration</span></div>' +
       '<label class="f" for="pw-old">Mot de passe actuel<input id="pw-old" type="password" autocomplete="current-password"></label>' +
@@ -348,6 +352,7 @@
     },
     regles: function () {
       var R = {}; ['midiMin', 'midiEx', 'rappelPause', 'rappelMidi'].forEach(function (k) { R[k] = parseInt(val('rg-' + k), 10) || 0; });
+      var cn = document.getElementById('rg-note'); R.note = !!(cn && cn.checked);
       run(call('regles_save', { regles: R }), 'Règles enregistrées.').then(function (r) { cfg.regles = r.regles; }, function (e) { err = msgOf(e); }).then(render);
       return false;
     },

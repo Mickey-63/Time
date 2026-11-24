@@ -10,7 +10,7 @@
   <div>
     <h1>Time GIOT<br><span class="rouge">Mode d’emploi</span></h1>
     <div class="sub">Le pointage du temps de travail par centre analytique, sur le téléphone.</div>
-    <div class="ver" style="margin-top:4pt">Version 3 du 24 novembre 2026 · GIOT Immobilier SA · Le résumé en une page s’appelle « Time GIOT pour les nuls ».</div>
+    <div class="ver" style="margin-top:4pt">Version 4 du 24 novembre 2026 · GIOT Immobilier SA · Le résumé en une page s’appelle « Time GIOT pour les nuls ».</div>
   </div>
   <div class="logo"><img src="../time/giot.png" alt="GIOT"><img src="../time/chat.png" alt=""></div>
 </div>
@@ -73,6 +73,9 @@
   <b>Règle des 15 minutes.</b> Quand tu es en Travail courant, un travail doit demander <b>au moins 15 minutes</b> pour être chargé sur le centre concerné. Un e-mail vite répondu ou un téléphone de deux minutes reste en Travail courant. Une réponse à étudier, un dossier à ouvrir, une question à creuser : dès que cela dépasse 15 minutes, tu touches le centre.
 </div>
 <figure class="fig"><div class="shot"><img src="img/n-batiments.png" alt=""></div><figcaption>La liste des bâtiments</figcaption></figure>
+<h3>Note de fin de travail (si la direction l’a activée)</h3>
+<p>Quand tu quittes un bâtiment, pour un autre centre ou en fin de journée, le téléphone te demande <b>deux ou trois mots sur ce qui a été fait</b> et le code de l’intervention : <b>Devis</b> (compris dans le devis, proposé d’office), <b>Régie</b> (facturé en plus) ou <b>Garantie</b> (après la mise en service). L’heure est déjà enregistrée : la note ne retarde jamais le pointage. Une pause ne déclenche pas la note.</p>
+<p>La note est obligatoire sur un bâtiment. Si tu fermes la page sans l’écrire, un rappel reste sur l’écran de pointage. Tu peux la relire ou la corriger dans l’onglet Journée, bouton <span class="btn c">Note</span>, et en ajouter une sur un centre commun si elle est utile.</p>
 <h3>Au bureau ou en déplacement</h3>
 <p>Touche <span class="btn c">En déplacement</span> quand tu quittes le bureau pour le travail, et <span class="btn c">Au bureau</span> à ton retour. Le centre ne change pas, seul le lieu change. Le tableau d’équipe montre ainsi qui est sur place.</p>
 <div class="clear"></div>
@@ -152,7 +155,7 @@
 
 <h2>9. Le tableau d’équipe</h2>
 <figure class="fig w"><div class="shot"><img src="img/equipe.png" alt=""></div><figcaption>Le tableau d’équipe, prévu pour rester affiché sur un écran</figcaption></figure>
-<p>La page <b>www.le-top.ch/time/etat.html</b> montre en un coup d’œil qui est au bureau, en déplacement, en pause ou absent, et sur quel centre. Elle est en lecture seule, se met à jour toutes les 15 secondes et passe en plein écran d’un bouton. Elle n’affiche ni la durée ni le motif des pauses.</p>
+<p>La page <b>www.le-top.ch/time/etat.html</b> montre en un coup d’œil qui est au bureau, en déplacement, en pause ou absent, et sur quel centre. Elle est en lecture seule, se met à jour toutes les 15 secondes et passe en plein écran d’un bouton. Elle n’affiche ni la durée ni le motif des pauses. Quand une pause ou un midi dépasse la durée fixée par la direction, la tuile porte la mention « Pause longue ».</p>
 <p>On y accède depuis la page de connexion (« Voir le tableau d’équipe ») ou depuis le menu de son nom.</p>
 
 <h2>10. L’administration</h2>
@@ -194,7 +197,7 @@
 <figure class="fig"><div class="shot"><img src="img/d-export.png" alt=""></div><figcaption>L’export des heures</figcaption></figure>
 <p>Choisissez la période (ce mois, le mois dernier, cette année ou des dates libres), éventuellement un collaborateur et une société, puis téléchargez le classeur. Il contient quatre feuilles :</p>
 <ul>
-  <li><b>Détail</b> : chaque plage avec la date, le collaborateur, le centre, le code analytique, le lieu, le début, la fin et la durée ;</li>
+  <li><b>Détail</b> : chaque plage avec la date, le collaborateur, le centre, le code analytique, le lieu, le début, la fin et la durée, puis le code d’intervention et la note de fin de travail ;</li>
   <li><b>Par centre</b> : le total des heures par centre et par collaborateur, pour le report dans Astuces ;</li>
   <li><b>Par collaborateur</b> : le total de chacun ;</li>
   <li><b>Centres</b> : la liste complète des centres et bâtiments (nom, code analytique, société, type, par défaut, actif).</li>
@@ -203,7 +206,8 @@
 <h3>Onglet Réglages</h3>
 <ul>
   <li>Les <b>adresses à transmettre</b> : page de pointage et tableau d’équipe.</li>
-  <li>Les <b>règles</b>, en minutes : midi obligatoire, exception hebdomadaire, rappels de pause et de midi.</li>
+  <li>Les <b>règles</b>, en minutes : midi obligatoire, exception hebdomadaire, rappels de pause et de midi. Ces deux rappels fixent aussi le moment où « Pause longue » apparaît au tableau d’équipe ; à 0, rien n’apparaît.</li>
+  <li>La <b>note de fin de travail</b> : une case l’active ou la coupe pour tout le monde. Pour corriger un code Devis, Régie ou Garantie avant l’export, ouvrez le pointage de l’employé, onglet Journée, bouton Note.</li>
   <li>Le <b>mot de passe</b> d’administration, et la déconnexion.</li>
 </ul>
 <div class="clear"></div>

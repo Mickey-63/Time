@@ -253,3 +253,12 @@ h3.soc { font-size: 20px; margin-top: 4px; }
 .brow.on { background: var(--vert); color: var(--on-vert); }
 .brow.on .mute { color: inherit; }
 .brow span:last-child { flex: none; white-space: nowrap; }
+
+/* Repère « pause longue » du tableau d'équipe : calme, sans rouge ni clignotement, sans durée */
+.btile .lg { align-self: flex-start; margin-top: 4px; padding: 3px 10px; border-radius: 999px; background: rgba(0, 0, 0, .3); color: #fff; font: 700 clamp(12px, 1vw, 16px)/1.2 var(--f-display); letter-spacing: .02em; }
+/* Note de fin de travail */
+.tl .t3 { font-size: 13.5px; font-weight: 600; margin-top: 2px; }
+.tl .acts { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.note .btn.sm { margin-top: 8px; display: block; }
+.sheet .seg { margin-top: 2px; }
+.seg.c3 { grid-template-columns: repeat(3, 1fr); }

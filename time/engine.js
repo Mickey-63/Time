@@ -87,6 +87,23 @@
     segments(evs, now).forEach(function (s) { splitByDay(s).forEach(function (p) { out.push(p); }); });
     return out;
   }
+  /* Interventions : une suite d'écritures de travail sur le même centre, pauses comprises, jusqu'au changement de centre
+     ou à la fin de journée. La note de fin de travail et le code d'intervention (D devis, R régie, G garantie) portent sur l'intervention. */
+  function sessions(evs) {
+    var s = sortEvents(evs), out = [], cur = null;
+    function close(ts) { if (cur) { cur.end = ts; cur.closed = true; out.push(cur); cur = null; } }
+    s.forEach(function (e) {
+      if (e.t === 'travail') {
+        if (cur && cur.d === e.d) { cur.ids.push(e.id); cur.carrier = e.id; }
+        else { close(e.ts); cur = { d: e.d, ids: [e.id], carrier: e.id, start: e.ts, end: null, closed: false, note: '', ci: '' }; }
+        if (e.note) cur.note = e.note;
+        if (e.ci) cur.ci = e.ci;
+      } else if (e.t !== 'pause') close(e.ts);
+    });
+    if (cur) out.push(cur);
+    return out;
+  }
+  var CODES = { D: 'Devis', R: 'Régie', G: 'Garantie' };
   function statusOf(evs) {
     var s = sortEvents(evs), e = s[s.length - 1];
     if (!e || e.t === 'fin') return { code: 'absent', t: 'absent', since: e ? e.ts : null };
@@ -244,15 +261,17 @@
     var S = { h: 1, date: 2, time: 3, dur: 4, chf: 5, b: 6, bdur: 7 };
     function hd(v) { return { v: v, s: S.h }; }
     function socNom(id) { return id && m.socs[id] ? m.socs[id].nom : '—'; }
-    var detail = [['Date', 'Société', 'Collaborateur', 'Centre', 'Code analytique', 'Lieu', 'Début', 'Fin', 'Catégorie', 'Durée', 'Minutes', 'Plage', 'Corrigé'].map(hd)];
+    var detail = [['Date', 'Société', 'Collaborateur', 'Centre', 'Code analytique', 'Lieu', 'Début', 'Fin', 'Catégorie', 'Durée', 'Minutes', 'Plage', 'Corrigé', 'Code', 'Note'].map(hd)];
     var parD = {}, parC = {};
     m.people.forEach(function (p) {
       if (f.pid && f.pid !== p.id) return;
       var nom = p.prenom + ' ' + p.nom, socs = p.socs || [];
+      var parEv = {}; // écriture → son intervention (code et note)
+      sessions(m.evs(p.id)).forEach(function (se) { se.ids.forEach(function (id) { parEv[id] = se; }); });
       pieces(m.evs(p.id), now).forEach(function (x) {
         if (x.t === 'cafe') return; // avant le pointage de début : ni travail ni pause
         if ((f.from && x.date < f.from) || (f.to && x.date > f.to)) return;
-        var ms = x.end - x.start, d = null, soc = null;
+        var ms = x.end - x.start, d = null, soc = null, se = x.t === 'travail' ? parEv[x.evId] : null;
         if (x.t === 'travail') {
           d = m.dossiers[x.d] || { nom: 'Centre supprimé', code: '', soc: null };
           soc = d.soc;
@@ -271,7 +290,9 @@
           x.t === 'travail' ? (x.lieu === 'mission' ? 'Déplacement' : 'Bureau') : '—',
           { v: excelSerial(x.start), s: S.time }, { v: excelSerial(x.end), s: S.time },
           x.t === 'travail' ? 'Travail' : (x.cat === 'midi' ? 'Repas' : 'Pause'),
-          { v: ms / DAY, s: S.dur }, Math.round(ms / MIN * 100) / 100, x.open ? 'Provisoire' : 'Close', x.corr ? 'Oui' : ''
+          { v: ms / DAY, s: S.dur }, Math.round(ms / MIN * 100) / 100, x.open ? 'Provisoire' : 'Close', x.corr ? 'Oui' : '',
+          // code d'intervention : sur toutes les lignes de l'intervention dès qu'elle est notée ; note : sur sa dernière écriture
+          se && (se.ci || se.note) && d && !d.commun ? (CODES[se.ci] || CODES.D) : '', se && se.carrier === x.evId ? se.note : ''
         ]);
       });
     });
@@ -300,7 +321,7 @@
     sc.push([{ v: 'Total général', s: S.b }, '', { v: totT / DAY, s: S.bdur }, { v: totP / DAY, s: S.bdur }]);
     return {
       sheets: [
-        { name: 'Détail', rows: detail, widths: [12, 22, 22, 30, 16, 12, 8, 8, 11, 9, 9, 11, 9] },
+        { name: 'Détail', rows: detail, widths: [12, 22, 22, 30, 16, 12, 8, 8, 11, 9, 9, 11, 9, 10, 40] },
         { name: 'Par centre', rows: sd, widths: [22, 32, 16, 22, 11] },
         { name: 'Par collaborateur', rows: sc, widths: [22, 14, 11, 11] },
         centresSheet(m.dossiers, m.socs)
@@ -315,7 +336,7 @@
     weekKey: weekKey, hhmm: hhmm, atTime: atTime, excelSerial: excelSerial, excelDate: excelDate, dur: dur, frDate: frDate, pad: pad,
     sortEvents: sortEvents, segments: segments, splitByDay: splitByDay, pieces: pieces, statusOf: statusOf, act: act,
     totals: totals, legalCheck: legalCheck, midiCheck: midiCheck, rkey: rkey, interventions: interventions,
-    montants: montants, refRapport: refRapport, transmettre: transmettre, canMove: canMove, ctxOf: ctxOf, workbook: workbook, centresSheet: centresSheet
+    montants: montants, refRapport: refRapport, transmettre: transmettre, canMove: canMove, ctxOf: ctxOf, workbook: workbook, centresSheet: centresSheet, sessions: sessions, CODES: CODES
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 

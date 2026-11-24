@@ -39,6 +39,16 @@
     });
     return Object.keys(ms).filter(function (id) { return mes().indexOf(id) >= 0; }).sort(function (a, b) { return (ms[b] - ms[a]) || (last[b] - last[a]); }).slice(0, n);
   }
+  /* Note de fin de travail (activée dans les Réglages de l'administration) : demandée quand on quitte un bâtiment. */
+  function noteOn() { return !!(S.regles && S.regles.note); }
+  function estBat(id) { return !!S.dossiers[id] && !S.dossiers[id].commun; }
+  function sessionDe(evId) { return E.sessions(evs()).filter(function (se) { return se.ids.indexOf(evId) >= 0; })[0] || null; }
+  // Interventions terminées sur un bâtiment et encore sans note, la plus ancienne d'abord.
+  function aNoter() {
+    if (!noteOn()) return [];
+    var depuis = S.regles.noteDepuis || 0;
+    return E.sessions(evs()).filter(function (se) { return se.closed && estBat(se.d) && !se.note && se.end >= depuis; });
+  }
   function defaut() { return S.defaut && mes().indexOf(S.defaut) >= 0 ? S.defaut : null; }
 
   /* ---------- synchronisation ---------- */
@@ -120,6 +130,8 @@
     if (!r.ev) return; // double appui : rien de plus
     S.evs[r.ev.id] = r.ev; delete S.lieuPause; touch(r.ev.id);
     save(); // 1. écrit sur le téléphone avant tout le reste
+    var n = aNoter()[0];
+    if (n) sheet = { type: 'note', ev: n.carrier, oblig: true }; // l'heure est déjà enregistrée : la note ne retarde jamais le pointage
     render(true); sync(); // 2. puis transmis
   }
 
@@ -202,6 +214,8 @@
     if ((st.t === 'absent' || st.t === 'cafe') && def) {
       h += '<button class="resume go" data-act="dossier" data-d="' + esc(def) + '"><b>Commencer la journée</b><span>Sur « ' + esc(dos(def).nom) + ' » · ' + (lieu === 'mission' ? 'en déplacement' : 'au bureau') + '</span></button>';
     }
+    var manq = aNoter();
+    if (manq.length) h += '<div class="note warn"><b>Note de fin de travail à écrire</b> pour ' + esc(dos(manq[0].d).nom) + (manq.length > 1 ? ' et ' + (manq.length - 1) + ' autre' + (manq.length > 2 ? 's' : '') : '') + '. <button class="btn sm" data-act="note" data-ev="' + esc(manq[0].carrier) + '">Écrire la note</button></div>';
     if (st.t === 'cafe') h += '<div class="note">Café avant travail : ce temps n’est compté ni comme travail ni comme pause. ' + (def ? 'Touche Commencer la journée ou un centre.' : 'Touche un centre pour commencer.') + '</div>';
     if (st.t === 'travail' && def && st.d === def) h += '<div class="mute small">Dès qu’une tâche dépasse 15 minutes, touche le centre concerné : le temps lui sera chargé.</div>';
     if (st.t === 'travail' && (t - st.since > 11 * E.H)) h += '<div class="note warn"><b>Fin de journée oubliée ?</b> Touche Fin de journée, puis corrige l’heure réelle dans Journée. Rien n’est retiré automatiquement.</div>';
@@ -249,11 +263,16 @@
   }
   function timeline(date, t) {
     var list = evs(), ps = E.pieces(list, t).filter(function (x) { return x.date === date; }), h = '<div class="tl">';
+    var parEv = {};
+    E.sessions(list).forEach(function (se) { se.ids.forEach(function (id) { parEv[id] = se; }); });
     ps.forEach(function (p) {
       var e = S.evs[p.evId], own = e && e.ts === p.start, hist = own && e.hist && e.hist.length ? e.hist[e.hist.length - 1] : null;
+      var se = p.t === 'travail' ? parEv[p.evId] : null, porte = se && se.carrier === p.evId && own, notee = se && (se.note || se.ci);
       h += '<div class="it"><span class="stripe s-' + (p.t === 'travail' ? (p.lieu === 'mission' ? 'mission' : 'bureau') : 'pause') + '"></span><div><div class="t1">' + E.hhmm(p.start) + ' – ' + (p.open ? 'en cours' : E.hhmm(p.end)) + ' · ' + E.dur(p.end - p.start) + '</div>' +
-        '<div class="t2">' + esc(e ? evLabel(e) : '') + (hist ? ' · corrigé (avant : ' + E.hhmm(hist.old) + ')' : '') + '</div></div>' +
-        (own ? '<button class="btn ghost sm" data-act="corriger" data-ev="' + esc(p.evId) + '">Corriger</button>' : '<span></span>') + '</div>';
+        '<div class="t2">' + esc(e ? evLabel(e) : '') + (hist ? ' · corrigé (avant : ' + E.hhmm(hist.old) + ')' : '') + '</div>' +
+        (porte && notee ? '<div class="t3">' + (estBat(se.d) ? esc(E.CODES[se.ci] || E.CODES.D) + (se.note ? ' · ' : '') : '') + esc(se.note) + '</div>' : '') + '</div>' +
+        '<span class="acts">' + (porte && (noteOn() || notee) ? '<button class="btn ghost sm" data-act="note" data-ev="' + esc(p.evId) + '">Note</button>' : '') +
+        (own ? '<button class="btn ghost sm" data-act="corriger" data-ev="' + esc(p.evId) + '">Corriger</button>' : '') + '</span></div>';
     });
     list.filter(function (e) { return e.t === 'fin' && E.dayKey(e.ts) === date; }).forEach(function (e) {
       var hist = e.hist && e.hist.length ? e.hist[e.hist.length - 1] : null;
@@ -301,6 +320,18 @@
         h += '<button class="brow' + (on ? ' on' : '') + '" data-act="bat-pick" data-d="' + esc(id) + '" data-name="' + esc(nm) + '"' + (q && nm.indexOf(q) < 0 ? ' hidden' : '') + '><span>' + esc(d.nom) + '</span><span class="mute small">' + (on ? 'en cours' : (ms ? E.dur(ms) : '')) + '</span></button>';
       });
       h += '</div>';
+    } else if (sheet.type === 'note') {
+      var sn = sessionDe(sheet.ev);
+      if (sn) {
+        var bat1 = estBat(sn.d), ci = sheet.ci || sn.ci || 'D', txt = sheet.txt !== undefined ? sheet.txt : sn.note;
+        h += '<h2>Note de fin de travail</h2><div><b>' + esc(dos(sn.d).nom) + '</b></div><div class="mute">' + E.frDate(E.dayKey(sn.start)) + ' · ' + E.hhmm(sn.start) + ' – ' + (sn.closed ? E.hhmm(sn.end) : 'en cours') + '</div>' +
+          '<label class="f" for="note-txt">Ce qui a été fait, en deux ou trois mots<input id="note-txt" maxlength="120" autocomplete="off" placeholder="Par exemple : purge radiateurs, 2 téléphones" value="' + esc(txt) + '"></label>';
+        if (bat1) h += '<div class="seg c3" role="group" aria-label="Code d’intervention">' + ['D', 'R', 'G'].map(function (c) { return '<button data-act="note-ci" data-c="' + c + '" aria-pressed="' + (ci === c) + '">' + E.CODES[c] + '</button>'; }).join('') + '</div>' +
+          '<div class="mute small">Devis : compris dans le devis. Régie : facturé en plus. Garantie : après la mise en service.</div>';
+        h += (sheet.err ? '<div class="err" role="alert">' + esc(sheet.err) + '</div>' : '') + '<button class="btn full" data-act="note-save">Enregistrer</button>';
+      }
+      // Sur un bâtiment la note est obligatoire : pas de bouton Fermer. Le pointage, lui, est déjà enregistré.
+      if (sn && sheet.oblig) return '<div class="veil"><div class="sheet" role="dialog" aria-modal="true">' + h + '</div></div>';
     } else if (sheet.type === 'corr') {
       var e = S.evs[sheet.ev];
       if (e) h += '<h2>Corriger une heure</h2><div>' + esc(evLabel(e)) + '</div><div class="mute">Enregistré : ' + E.frDate(E.dayKey(e.ts)) + ' à ' + E.hhmm(e.ts) + '. L’ancienne valeur et ta raison restent dans l’historique et dans l’export.</div>' +
@@ -343,6 +374,33 @@
     login: function () { login(); return false; },
     logout: function () { logout(); },
     menu: function () { sheet = { type: 'menu' }; },
+    note: function (ds) { var se = sessionDe(ds.ev); if (se) sheet = { type: 'note', ev: se.carrier, oblig: false }; },
+    'note-ci': function (ds) { sheet.ci = ds.c; },
+    'note-save': function () {
+      var se = sessionDe(sheet.ev);
+      if (!se) { sheet = null; return; }
+      var el = document.getElementById('note-txt'), txt = (el ? el.value : (sheet.txt || '')).replace(/\s+/g, ' ').trim(), bat1 = estBat(se.d);
+      sheet.txt = txt;
+      if (bat1 && txt.length < 3) { sheet.err = 'Écris deux ou trois mots sur ce qui a été fait.'; return; }
+      var ci = bat1 ? (sheet.ci || se.ci || 'D') : '';
+      // La note et le code sont portés par la dernière écriture de l'intervention ; les autres sont vidées.
+      se.ids.forEach(function (id) {
+        var e = S.evs[id];
+        if (!e) return;
+        var n = id === se.carrier ? txt : '', c = id === se.carrier ? ci : '';
+        if ((e.note || '') === n && (e.ci || '') === c) return;
+        var x = Object.assign({}, e, { rev: (e.rev || 0) + 1 });
+        if (n) x.note = n; else delete x.note;
+        if (c) x.ci = c; else delete x.ci;
+        S.evs[id] = x; touch(id);
+      });
+      save();
+      var suite = sheet.oblig ? aNoter()[0] : null;
+      sheet = suite ? { type: 'note', ev: suite.carrier, oblig: true } : null;
+      toast('Note enregistrée.');
+      render(true); sync();
+      return false;
+    },
     pin: function () { sheet = { type: 'pin' }; },
     'pin-save': function () {
       var v = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }, o = v('pin-old'), n = v('pin-n1'), n2 = v('pin-n2');
@@ -396,7 +454,8 @@
     if (res === false) return;
     save(); render(true); sync();
   });
-  root.addEventListener('input', function (ev) { if (ev.target.id === 'q-bat') { if (sheet) sheet.q = ev.target.value; filterBat(ev.target.value); } });
+  root.addEventListener('input', function (ev) { if (ev.target.id === 'q-bat') { if (sheet) sheet.q = ev.target.value; filterBat(ev.target.value); }
+    if (ev.target.id === 'note-txt' && sheet) sheet.txt = ev.target.value; });
   root.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' && ev.target.id === 'lg-pin') { ev.preventDefault(); login(); } });
   root.addEventListener('focusout', function () { setTimeout(function () { if (pendingRender) render(); }, 50); });
   window.addEventListener('online', function () { online = true; sync(); render(); });

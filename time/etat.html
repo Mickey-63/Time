@@ -6,18 +6,18 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="icon" href="chat.png?v=9">
+<link rel="icon" href="chat.png?v=10">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
 <title>Équipe · GIOT OptimalGo</title>
 </head>
 <body>
 <div class="board" id="app"></div>
 <noscript>Cette page a besoin de JavaScript.</noscript>
-<script src="engine.js?v=9"></script>
-<script src="commun.js?v=9"></script>
+<script src="engine.js?v=10"></script>
+<script src="commun.js?v=10"></script>
 <script>
 /* Tableau d'équipe public : qui est disponible, sur quel dossier. Lecture seule, rafraîchi toutes les 15 secondes. */
 (function () {
@@ -44,7 +44,8 @@
       h += '<div class="btile st-' + p.code + '"><div class="p">' + esc(p.prenom) + '</div><div class="n">' + esc(p.nom) + '</div>' +
         '<div class="l">' + ic(p.code) + window.LIB[p.code] + '</div>' +
         (travail && p.dossier ? '<div class="d">' + esc(p.dossier) + '</div>' : '') +
-        '<div class="s">' + (oubli ? 'Fin de journée oubliée ? · ' : '') + depuis(p.since, t) + '</div></div>';
+        '<div class="s">' + (oubli ? 'Fin de journée oubliée ? · ' : '') + depuis(p.since, t) + '</div>' +
+        (p.long ? '<div class="lg">Pause longue</div>' : '') + '</div>';
     });
     h += '</div><footer><span>Mise à jour automatique toutes les 15 secondes. Le statut est celui du dernier pointage reçu.</span>' +
       '<button class="btn ghost sm" id="plein">Plein écran</button><a href="index.html">Pointer</a></footer>';
