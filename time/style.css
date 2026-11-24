@@ -241,3 +241,15 @@ h3.soc { font-size: 20px; margin-top: 4px; }
 .resume.go b { font-size: 27px; }
 
 .aide { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+
+/* Bâtiments : bouton en bas à droite et liste complète */
+.cmd button { font-size: 13.5px; }
+.cmd button.main { font-size: 13.5px; }
+.btn svg.ic { margin-right: 8px; }
+.blist { display: flex; flex-direction: column; border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; }
+.brow { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 50px; padding: 8px 14px; border-bottom: 1px solid var(--line); font: 600 17px/1.15 var(--f-display); text-align: left; }
+.brow:last-child { border-bottom: 0; }
+.brow[hidden] { display: none; }
+.brow.on { background: var(--vert); color: var(--on-vert); }
+.brow.on .mute { color: inherit; }
+.brow span:last-child { flex: none; white-space: nowrap; }

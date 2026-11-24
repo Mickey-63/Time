@@ -74,9 +74,33 @@ function mesDossiers(array $e, array $c): array {
   $o = [];
   foreach ($c['dossiers'] as $d) {
     if (empty($d['actif']) || !in_array($d['soc'], $e['socs'], true)) continue;
-    if (!empty($d['commun']) || !empty($e['tous']) || in_array($d['id'], $e['dossiers'] ?? [], true)) $o[] = $d['id'];
+    $o[] = $d['id'];
   }
   return $o;
+}
+/* Centres épinglés : ceux cochés dans la fiche de l'employé, affichés d'office sur son écran de pointage. */
+function epingles(array $e, array $c): array {
+  $o = [];
+  foreach ($c['dossiers'] as $d) {
+    if (!empty($d['actif']) && empty($d['commun']) && in_array($d['soc'], $e['socs'], true) && in_array($d['id'], $e['dossiers'] ?? [], true)) $o[] = $d['id'];
+  }
+  return $o;
+}
+/* Ajoute une liste de centres à une société ; les noms déjà présents sont ignorés. Renvoie [ajoutés, doublons]. */
+function importer(array &$c, string $soc, array $items, bool $commun): array {
+  $vus = [];
+  foreach ($c['dossiers'] as $d) if ($d['soc'] === $soc) $vus[nomCle($d['nom'])] = true;
+  $n = 0; $dbl = 0;
+  foreach ($items as $it) {
+    if (!is_array($it)) continue;
+    $nom = cut((string) ($it['nom'] ?? ''), 60);
+    if ($nom === '') continue;
+    if (isset($vus[nomCle($nom)])) { $dbl++; continue; }
+    $vus[nomCle($nom)] = true;
+    $c['dossiers'][] = ['id' => newId('d'), 'nom' => $nom, 'code' => cut((string) ($it['code'] ?? ''), 30), 'soc' => $soc, 'actif' => true, 'commun' => $commun, 'defaut' => false];
+    $n++;
+  }
+  return [$n, $dbl];
 }
 /* Centre par défaut de l'employé : celui sur lequel la journée commence. */
 function defautDe(array $e, array $c): ?string {
@@ -317,7 +341,7 @@ switch ($a) {
     out([
       'now' => NOW,
       'me' => ['id' => $e['id'], 'prenom' => $e['prenom'], 'nom' => $e['nom'], 'socs' => $e['socs'], 'midi' => !empty($e['midi'])],
-      'socs' => $c['socs'], 'dossiers' => $dl, 'mes' => mesDossiers($e, $c), 'defaut' => defautDe($e, $c), 'regles' => $c['regles'], 'events' => $recent,
+      'socs' => $c['socs'], 'dossiers' => $dl, 'mes' => mesDossiers($e, $c), 'epingles' => epingles($e, $c), 'defaut' => defautDe($e, $c), 'regles' => $c['regles'], 'events' => $recent,
     ]);
   }
 
@@ -495,21 +519,43 @@ switch ($a) {
     $items = $in['items'] ?? null;
     if (!is_array($items) || !$items) fail('La liste est vide.');
     if (count($items) > 2000) fail('Trop de lignes en une fois (2000 au maximum).');
-    $commun = !empty($in['commun']);
-    $vus = [];
-    foreach ($c['dossiers'] as $d) if ($d['soc'] === $soc) $vus[nomCle($d['nom'])] = true;
-    $n = 0; $dbl = 0;
-    foreach ($items as $it) {
-      if (!is_array($it)) continue;
-      $nom = cut((string) ($it['nom'] ?? ''), 60);
-      if ($nom === '') continue;
-      if (isset($vus[nomCle($nom)])) { $dbl++; continue; }
-      $vus[nomCle($nom)] = true;
-      $c['dossiers'][] = ['id' => newId('d'), 'nom' => $nom, 'code' => cut((string) ($it['code'] ?? ''), 30), 'soc' => $soc, 'actif' => true, 'commun' => $commun, 'defaut' => false];
-      $n++;
-    }
+    [$n, $dbl] = importer($c, $soc, $items, !empty($in['commun']));
     if ($n) wr('cfg', $c);
     out(['dossiers' => $c['dossiers'], 'ajoutes' => $n, 'doublons' => $dbl]);
+  }
+
+  /* Import d'une liste chiffrée posée par le dépôt (import.php) : la clé n'est jamais dans le dépôt, elle est fournie une fois à l'appel. */
+  case 'import_secret': {
+    $f = __DIR__ . '/import.php';
+    if (!is_file($f)) fail('Rien à importer.', 404);
+    $r = include $f;
+    $k = (string) ($_GET['k'] ?? '');
+    if (!is_array($r) || !preg_match('/^[0-9a-f]{64}$/', $k)) fail('Clé invalide.', 403);
+    if (!function_exists('openssl_decrypt')) fail('OpenSSL absent sur ce serveur.', 500);
+    $txt = openssl_decrypt((string) base64_decode((string) $r['data']), 'aes-256-gcm', (string) hex2bin($k), OPENSSL_RAW_DATA, (string) base64_decode((string) $r['iv']), (string) base64_decode((string) $r['tag']));
+    if ($txt === false) fail('Clé invalide.', 403);
+    lock();
+    $c = cfg();
+    $soc = (string) ($r['soc'] ?? '');
+    if (!isset($c['socs'][$soc])) fail('Société inconnue.');
+    $items = [];
+    foreach (preg_split('/\\R/u', $txt) as $l) if (trim($l) !== '') $items[] = ['nom' => $l];
+    [$n, $dbl] = importer($c, $soc, $items, false);
+    if ($n) wr('cfg', $c);
+    $tot = 0;
+    foreach ($c['dossiers'] as $d) if ($d['soc'] === $soc && empty($d['commun'])) $tot++;
+    out(['ajoutes' => $n, 'doublons' => $dbl, 'total' => $tot]);
+  }
+
+  /* L'administration ouvre le pointage d'un employé, comme s'il était connecté (contrôle, essais, correction d'un oubli). */
+  case 'emp_as': {
+    needAdmin($in);
+    $c = cfg();
+    $id = (string) ($in['id'] ?? '');
+    $i = empIndex($c, $id);
+    if ($i < 0) fail('Employé introuvable.', 404);
+    if (empty($c['employes'][$i]['actif'])) fail('Cet employé est désactivé : réactivez-le pour ouvrir son pointage.', 409);
+    out(['token' => sessNew('e:' . $id, JOUR / 2), 'pid' => $id]);
   }
 
   case 'dos_del': {

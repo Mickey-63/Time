@@ -10,7 +10,7 @@
   /* ---------- état local ---------- */
   var LS = 'pointage-v2';
   function blank() {
-    return { v: 2, token: '', me: null, lastPid: '', socs: {}, dossiers: {}, mes: [], defaut: null, regles: { midiMin: 60, midiEx: 30, rappelPause: 20, rappelMidi: 75 },
+    return { v: 2, token: '', me: null, lastPid: '', socs: {}, dossiers: {}, mes: [], epingles: [], defaut: null, regles: { midiMin: 60, midiEx: 30, rappelPause: 20, rappelMidi: 75 },
       evs: {}, dirty: {}, favs: [], lieu: 'bureau', tab: 'pointage', jour: null, seq: 0, skew: 0 };
   }
   var S = (function () {
@@ -28,6 +28,17 @@
   function socCourt(id) { return S.socs[id] ? S.socs[id].court : ''; }
   function mes() { return S.mes.filter(function (id) { return S.dossiers[id]; }); }
   // Centre par défaut : la journée commence dessus, on change ensuite au fil du travail.
+  // Bâtiments : les centres non communs (adresses d'immeubles, chantiers). Tous sont accessibles par le bouton Bâtiments.
+  function batiments() { return mes().filter(function (id) { return !S.dossiers[id].commun; }).sort(function (a, b) { return dos(a).nom.localeCompare(dos(b).nom, 'fr', { numeric: true }); }); }
+  // Les bâtiments habituels de l'employé : ceux où il a le plus travaillé sur la période gardée (45 jours), à égalité le plus récent.
+  function habituels(t, n) {
+    var ms = {}, last = {};
+    E.pieces(evs(), t).forEach(function (p) {
+      if (p.t !== 'travail' || !S.dossiers[p.d] || S.dossiers[p.d].commun) return;
+      ms[p.d] = (ms[p.d] || 0) + (p.end - p.start); last[p.d] = Math.max(last[p.d] || 0, p.end);
+    });
+    return Object.keys(ms).filter(function (id) { return mes().indexOf(id) >= 0; }).sort(function (a, b) { return (ms[b] - ms[a]) || (last[b] - last[a]); }).slice(0, n);
+  }
   function defaut() { return S.defaut && mes().indexOf(S.defaut) >= 0 ? S.defaut : null; }
 
   /* ---------- synchronisation ---------- */
@@ -48,7 +59,7 @@
       r.events.forEach(function (e) { next[e.id] = e; });
       Object.keys(S.dirty).forEach(function (id) { if (S.evs[id]) next[id] = S.evs[id]; });
       S.evs = next; cache = null;
-      S.me = r.me; S.socs = r.socs; S.mes = r.mes; S.defaut = r.defaut || null; S.regles = r.regles;
+      S.me = r.me; S.socs = r.socs; S.mes = r.mes; S.epingles = r.epingles || []; S.defaut = r.defaut || null; S.regles = r.regles;
       S.dossiers = {}; r.dossiers.forEach(function (d) { S.dossiers[d.id] = d; });
     }, function (err) {
       if (err.status === 401) { S.token = ''; S.me = null; loginErr = err.message; loadPeople(); }
@@ -195,32 +206,40 @@
     if (st.t === 'travail' && def && st.d === def) h += '<div class="mute small">Dès qu’une tâche dépasse 15 minutes, touche le centre concerné : le temps lui sera chargé.</div>';
     if (st.t === 'travail' && (t - st.since > 11 * E.H)) h += '<div class="note warn"><b>Fin de journée oubliée ?</b> Touche Fin de journée, puis corrige l’heure réelle dans Journée. Rien n’est retiré automatiquement.</div>';
     h += '<div class="seg" role="group" aria-label="Lieu de travail"><button data-act="lieu" data-l="bureau" aria-pressed="' + (lieu === 'bureau') + '">' + ic('bureau') + 'Au bureau</button><button data-act="lieu" data-l="mission" aria-pressed="' + (lieu === 'mission') + '">' + ic('mission') + 'En déplacement</button></div>';
-    if (!list.length) return h + '<div class="note">Aucun centre ne t’est affecté pour le moment. L’administration les attribue ; ils apparaissent ici tout seuls.</div>';
-    if (list.length > 6) h += '<input class="search" id="q-dos" type="search" placeholder="Chercher une adresse ou un centre" aria-label="Chercher un centre" autocomplete="off">';
+    if (!list.length) return h + '<div class="note">Aucun centre n’est encore créé pour ta société. L’administration les crée ; ils apparaissent ici tout seuls.</div>';
     var favs = S.favs || [];
     var tri = function (a, b) { return ((b === def) - (a === def)) || ((favs.indexOf(b) >= 0) - (favs.indexOf(a) >= 0)) || dos(a).nom.localeCompare(dos(b).nom, 'fr', { numeric: true }); };
     var col = st.code === 'mission' ? 'bleu' : 'vert', today = E.dayKey(t);
     var tuile = function (id) {
       var d = dos(id), on = st.t === 'travail' && st.d === id, wait = st.t === 'pause' && ctx && ctx.d === id, ms = tt.parDossier[id] || 0, fav = favs.indexOf(id) >= 0;
       var t0 = on ? Math.max(st.since, E.dayStart(today)) : 0;
-      return '<div class="dos' + (on ? ' on' : '') + (wait ? ' wait' : '') + '" data-name="' + esc((d.nom + ' ' + d.code + ' ' + socCourt(d.soc)).toLowerCase()) + '">' +
+      return '<div class="dos' + (on ? ' on' : '') + (wait ? ' wait' : '') + '">' +
         '<button class="hit" data-act="dossier" data-d="' + esc(id) + '" aria-pressed="' + on + '" aria-label="' + esc(d.nom + (on ? ', en cours' : '')) + '">' +
         '<span class="nm">' + esc(d.nom) + '</span><span class="ft"><span class="tag">' + (id === def ? 'par défaut' : esc(socCourt(d.soc))) + '</span><span>' + (on ? tick(ms - (t - t0), t0) : (ms ? E.dur(ms) : '')) + '</span></span></button>' +
         '<button class="fav" data-act="fav" data-d="' + esc(id) + '" aria-pressed="' + fav + '" aria-label="' + (fav ? 'Retirer des favoris' : 'Ajouter aux favoris') + '">' + ic('star') + '</button></div>';
     };
-    var bloc = function (titre, ids) {
-      if (!ids.length) return '';
-      return '<div class="sec"><span>' + titre + '</span><span>' + ids.length + '</span></div><div class="grid" style="--st:var(--' + col + ');--on-st:var(--on-' + col + ')">' + ids.sort(tri).map(tuile).join('') + '</div>';
+    var bloc = function (titre, droite, ids) {
+      return '<div class="sec"><span>' + titre + '</span><span>' + droite + '</span></div>' + (ids.length ? '<div class="grid" style="--st:var(--' + col + ');--on-st:var(--on-' + col + ')">' + ids.map(tuile).join('') + '</div>' : '');
     };
-    var com = list.filter(function (id) { return dos(id).commun; }), att = list.filter(function (id) { return !dos(id).commun; });
-    return h + bloc('Centres communs', com) + bloc('Mes centres', att);
+    var com = list.filter(function (id) { return dos(id).commun; }).sort(tri), bat = batiments();
+    h += bloc('Centres communs', com.length, com);
+    if (bat.length) {
+      // À l'écran : le bâtiment en cours, les épinglés par l'administration, les favoris (étoile), puis les trois plus habituels.
+      var vus = {}, mesBat = [];
+      var cur = st.t === 'travail' ? st.d : (st.t === 'pause' && ctx ? ctx.d : null);
+      [cur].concat(S.epingles || [], favs, habituels(t, 3)).forEach(function (id) { if (id && bat.indexOf(id) >= 0 && !vus[id]) { vus[id] = true; mesBat.push(id); } });
+      h += bloc('Mes bâtiments', mesBat.length + ' sur ' + bat.length, mesBat) +
+        '<button class="btn ghost full" data-act="bat">' + ic('bureau') + (mesBat.length ? 'Tous les bâtiments' : 'Choisir un bâtiment') + '</button>';
+    }
+    return h;
   }
   function cmdBar(st) {
     var b = function (act, icn, lab, cls) { return '<button data-act="' + act + '" class="' + (cls || '') + '">' + ic(icn) + '<span>' + lab + '</span></button>'; };
     var h = '<div class="cmd" role="group" aria-label="Commandes">';
-    if (st.t === 'travail') h += b('appel', 'tel', 'Appel privé', 'main wide') + b('pause', 'pause', 'Pause') + b('midi', 'midi', 'Midi') + b('fin', 'fin', 'Fin de journée');
-    else if (st.t === 'absent') h += b('cafe', 'cafe', 'Café avant travail');
-    else h += b('fin', 'fin', 'Fin de journée');
+    if (st.t === 'travail') h += b('appel', 'tel', 'Appel privé') + b('pause', 'pause', 'Pause') + b('midi', 'midi', 'Midi') + b('fin', 'fin', 'Fin de journée');
+    else if (st.t === 'absent') h += b('cafe', 'cafe', 'Café avant travail', 'wide');
+    else h += b('fin', 'fin', 'Fin de journée', 'wide');
+    if (batiments().length) h += b('bat', 'bureau', 'Bâtiments', 'main');
     return h + '</div>';
   }
   function evLabel(e) {
@@ -267,6 +286,16 @@
       h += '<h2>' + esc(S.me.prenom + ' ' + S.me.nom) + '</h2><a class="btn ghost full" href="etat.html">Tableau d’équipe</a>' + window.aide('btn ghost full');
       if (pending()) h += '<div class="note">' + pending() + ' pointage(s) pas encore transmis. Ils restent sur ce téléphone et partiront à ta prochaine connexion.</div>';
       h += '<button class="btn ghost full" data-act="logout">Se déconnecter</button>';
+    } else if (sheet.type === 'bat') {
+      var st = E.statusOf(evs()), t = now(), today = E.dayKey(t), tt = E.totals(E.pieces(evs(), t).filter(function (x) { return x.date === today; }));
+      var q = (sheet.q || '').trim().toLowerCase(), bat = batiments();
+      h += '<h2>Bâtiments</h2><div class="mute small">Touche l’adresse sur laquelle tu travailles : le temps lui est chargé dès maintenant.</div>' +
+        (bat.length > 8 ? '<input class="search" id="q-bat" type="search" placeholder="Chercher une adresse" aria-label="Chercher une adresse" autocomplete="off" value="' + esc(sheet.q || '') + '">' : '') + '<div class="blist">';
+      bat.forEach(function (id) {
+        var d = dos(id), on = st.t === 'travail' && st.d === id, nm = (d.nom + ' ' + d.code).toLowerCase(), ms = tt.parDossier[id] || 0;
+        h += '<button class="brow' + (on ? ' on' : '') + '" data-act="bat-pick" data-d="' + esc(id) + '" data-name="' + esc(nm) + '"' + (q && nm.indexOf(q) < 0 ? ' hidden' : '') + '><span>' + esc(d.nom) + '</span><span class="mute small">' + (on ? 'en cours' : (ms ? E.dur(ms) : '')) + '</span></button>';
+      });
+      h += '</div>';
     } else if (sheet.type === 'corr') {
       var e = S.evs[sheet.ev];
       if (e) h += '<h2>Corriger une heure</h2><div>' + esc(evLabel(e)) + '</div><div class="mute">Enregistré : ' + E.frDate(E.dayKey(e.ts)) + ' à ' + E.hhmm(e.ts) + '. L’ancienne valeur et ta raison restent dans l’historique et dans l’export.</div>' +
@@ -283,20 +312,19 @@
   function render(force) {
     if (!force && typing()) { pendingRender = true; paintSync(); return; }
     pendingRender = false;
-    var m = document.getElementById('main'), sc = m ? m.scrollTop : 0, q = document.getElementById('q-dos'), qv = q ? q.value : '';
+    var m = document.getElementById('main'), sc = m ? m.scrollTop : 0;
     var pin = document.getElementById('lg-pin'), pv = pin ? pin.value : '', sel = document.getElementById('lg-pid'), sv = sel ? sel.value : '';
     root.className = 'app';
     if (!S.token) root.innerHTML = vLogin();
     else if (!S.me) root.innerHTML = '<div class="login">' + LOGO + '<h1>Pointage</h1><div class="mute">' + (netErr ? 'Serveur injoignable. Nouvel essai automatique…' : 'Chargement…') + '</div></div>';
     else root.innerHTML = vApp() + vSheet() + (toastMsg ? '<div class="toast" role="status"><span>' + esc(toastMsg.text) + '</span></div>' : '');
     m = document.getElementById('main'); if (m) m.scrollTop = sc;
-    if (qv) { q = document.getElementById('q-dos'); if (q) { q.value = qv; filterDos(qv); } }
     if (pv) { pin = document.getElementById('lg-pin'); if (pin) pin.value = pv; }
     if (sv) { sel = document.getElementById('lg-pid'); if (sel) sel.value = sv; }
   }
-  function filterDos(v) {
+  function filterBat(v) {
     v = v.trim().toLowerCase();
-    Array.prototype.forEach.call(root.querySelectorAll('.dos'), function (el) { el.hidden = !!v && el.getAttribute('data-name').indexOf(v) < 0; });
+    Array.prototype.forEach.call(root.querySelectorAll('.brow'), function (el) { el.hidden = !!v && el.getAttribute('data-name').indexOf(v) < 0; });
   }
   setInterval(function () {
     var t = now();
@@ -313,6 +341,8 @@
     close: function () { sheet = null; },
     'close-veil': function (ds, el, ev) { if (ev.target === el) sheet = null; else return false; },
     tab: function (ds) { S.tab = ds.t; var m = document.getElementById('main'); if (m) m.scrollTop = 0; },
+    bat: function () { sheet = { type: 'bat', q: '' }; },
+    'bat-pick': function (ds) { var l = evs(); sheet = null; doAct({ type: 'dossier', d: ds.d, lieu: lieuChoisi(E.statusOf(l), E.ctxOf(l)) }); render(true); return false; },
     dossier: function (ds) { var l = evs(); doAct({ type: 'dossier', d: ds.d, lieu: lieuChoisi(E.statusOf(l), E.ctxOf(l)) }); return false; },
     reprendre: function () { doAct({ type: 'reprendre' }); return false; },
     appel: function () { doAct({ type: 'pause', motif: 'Appel privé' }); return false; },
@@ -350,7 +380,7 @@
     if (res === false) return;
     save(); render(true); sync();
   });
-  root.addEventListener('input', function (ev) { if (ev.target.id === 'q-dos') filterDos(ev.target.value); });
+  root.addEventListener('input', function (ev) { if (ev.target.id === 'q-bat') { if (sheet) sheet.q = ev.target.value; filterBat(ev.target.value); } });
   root.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' && ev.target.id === 'lg-pin') { ev.preventDefault(); login(); } });
   root.addEventListener('focusout', function () { setTimeout(function () { if (pendingRender) render(); }, 50); });
   window.addEventListener('online', function () { online = true; sync(); render(); });
