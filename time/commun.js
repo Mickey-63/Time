@@ -25,7 +25,7 @@
   G.LOGO = '<span class="logo"><img src="giot.png?v=8" alt="GIOT" width="224" height="82">' +
     '<a class="chat" href="admin.html" aria-label="Administration"><img src="chat.png?v=8" alt="" width="76" height="82"></a></span>';
   // Modes d'emploi : deux PDF tenus à jour dans le dépôt (sources dans .manuels/). Changer DOC à chaque nouvelle version.
-  var DOC = '2026-11-24';
+  var DOC = '2026-11-24b';
   G.aide = function (cls) {
     return '<a class="' + cls + '" href="time-giot-pour-les-nuls.pdf?v=' + DOC + '" target="_blank" rel="noopener">Time GIOT pour les nuls</a>' +
       '<a class="' + cls + '" href="time-giot-mode-emploi.pdf?v=' + DOC + '" target="_blank" rel="noopener">Mode d’emploi détaillé</a>';

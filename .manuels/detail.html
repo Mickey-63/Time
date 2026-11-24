@@ -10,7 +10,7 @@
   <div>
     <h1>Time GIOT<br><span class="rouge">Mode d’emploi</span></h1>
     <div class="sub">Le pointage du temps de travail par centre analytique, sur le téléphone.</div>
-    <div class="ver" style="margin-top:4pt">Version du 24 novembre 2026 · GIOT Immobilier SA · Le résumé en une page s’appelle « Time GIOT pour les nuls ».</div>
+    <div class="ver" style="margin-top:4pt">Version 2 du 24 novembre 2026 · GIOT Immobilier SA · Le résumé en une page s’appelle « Time GIOT pour les nuls ».</div>
   </div>
   <div class="logo"><img src="../time/giot.png" alt="GIOT"><img src="../time/chat.png" alt=""></div>
 </div>
@@ -45,8 +45,8 @@
   <li><b>Ton nom</b> (menu : tableau d’équipe, modes d’emploi, déconnexion) et le logo GIOT.</li>
   <li><b>Le bandeau de statut</b>, en couleur : ce que tu fais en ce moment, sur quel centre, depuis quelle heure, et le temps passé aujourd’hui sur ce centre.</li>
   <li><b>Le lieu</b> : <span class="btn c">Au bureau</span> ou <span class="btn c">En déplacement</span>.</li>
-  <li><b>Tes centres</b> : d’abord les centres communs, puis « Mes centres », ceux qui te sont attribués. Le centre en cours est en couleur. Chaque tuile affiche le temps déjà passé dessus aujourd’hui.</li>
-  <li><b>Les commandes</b>, en bas : Appel privé, Pause, Midi, Fin de journée.</li>
+  <li><b>Les centres communs</b>, puis <b>« Mes bâtiments »</b> : le bâtiment en cours, tes favoris et tes adresses les plus habituelles. Le centre en cours est en couleur. Chaque tuile affiche le temps déjà passé dessus aujourd’hui.</li>
+  <li><b>Les commandes</b>, en bas : Appel privé, Pause, Midi, Fin de journée et, tout à droite, <span class="btn">Bâtiments</span>.</li>
   <li><b>Les onglets</b> : Pointage et Journée.</li>
 </ul>
 <table>
@@ -56,8 +56,8 @@
   <tr><td><span class="dot" style="background:#e98a06"></span>Orange</td><td>En pause (pause, midi, appel privé, café avant travail)</td></tr>
   <tr><td><span class="dot" style="background:#6c7886"></span>Gris</td><td>Absent : journée pas commencée ou terminée</td></tr>
 </table>
-<p><b>Chercher un centre :</b> dès que tu as plus de six centres, un champ de recherche apparaît. Tape quelques lettres de l’adresse.</p>
-<p><b>Favoris :</b> touche l’étoile d’une tuile pour la faire remonter en tête de sa liste.</p>
+<p><b>Le bouton Bâtiments</b> ouvre la liste complète des adresses, avec un champ de recherche : tape quelques lettres de la rue ou de la localité.</p>
+<p><b>Favoris :</b> touche l’étoile d’une tuile de bâtiment pour la garder en permanence sur ton écran.</p>
 <p>En bas du bandeau, <b>« Synchronisé »</b> confirme que tout est transmis au serveur (voir chapitre 8).</p>
 <div class="clear"></div>
 
@@ -67,10 +67,11 @@
 <p>En arrivant, touche <span class="btn">Commencer la journée</span>. Tu démarres sur le centre par défaut, <b>« Travail courant »</b>. Le premier travail du matin, relever et traiter en gros les e-mails reçus, se fait sur ce centre, sans attribution à un chantier.</p>
 <p>Tu peux aussi commencer directement sur un autre centre en touchant sa tuile.</p>
 <h3>Changer de centre : la règle des 15 minutes</h3>
-<p>Dès que tu passes à un travail précis pour une adresse ou un chantier, touche son centre. Le temps est chargé sur ce centre à partir de cet instant, et le centre précédent s’arrête tout seul.</p>
+<p>Dès que tu passes à un travail précis pour une adresse, touche <span class="btn">Bâtiments</span>, en bas à droite, puis l’adresse. Si sa tuile est déjà sur ton écran, touche-la directement. Le temps est chargé sur ce bâtiment à partir de cet instant, et le centre précédent s’arrête tout seul. Pour revenir au travail général, touche « Travail courant » ou un autre centre commun.</p>
 <div class="box r" style="margin:5pt 0 7pt; overflow:hidden">
   <b>Règle des 15 minutes.</b> Quand tu es en Travail courant, un travail doit demander <b>au moins 15 minutes</b> pour être chargé sur le centre concerné. Un e-mail vite répondu ou un téléphone de deux minutes reste en Travail courant. Une réponse à étudier, un dossier à ouvrir, une question à creuser : dès que cela dépasse 15 minutes, tu touches le centre.
 </div>
+<figure class="fig"><div class="shot"><img src="img/n-batiments.png" alt=""></div><figcaption>La liste des bâtiments</figcaption></figure>
 <h3>Au bureau ou en déplacement</h3>
 <p>Touche <span class="btn c">En déplacement</span> quand tu quittes le bureau pour le travail, et <span class="btn c">Au bureau</span> à ton retour. Le centre ne change pas, seul le lieu change. Le tableau d’équipe montre ainsi qui est sur place.</p>
 <div class="clear"></div>
@@ -101,8 +102,10 @@
   <tr><td>Immobilier</td><td>La gestion de nos propres immeubles quand la tâche en touche plusieurs à la fois, ou pour des bricoles de moins de 15 minutes.</td></tr>
   <tr><td>OptimalGo</td><td>Tout travail fait pour OptimalGo SA, quelle que soit la tâche. Ce temps lui est refacturé.</td></tr>
 </table>
-<h3>Les centres attribués : les adresses</h3>
-<p>Chaque immeuble ou chantier est un centre qui porte son <b>adresse postale</b>, comme dans Astuces. La direction attribue à chacun les adresses sur lesquelles il travaille ; elles apparaissent sous « Mes centres ». S’il te manque une adresse, demande-la : elle apparaît toute seule dès qu’elle t’est attribuée.</p>
+<h3>Les bâtiments : les adresses</h3>
+<p>Chaque immeuble ou chantier est un centre qui porte son <b>adresse postale</b>, comme dans Astuces. Tous les bâtiments sont accessibles à tout le monde par le bouton <span class="btn">Bâtiments</span>.</p>
+<p>Pour éviter de chercher, l’écran de pointage affiche sous « Mes bâtiments » : le bâtiment en cours, ceux que la direction a épinglés pour toi, tes favoris (étoile) et tes <b>trois adresses les plus habituelles</b>, calculées sur tes 45 derniers jours. Cette sélection se met à jour toute seule au fil du temps.</p>
+<p>S’il manque une adresse dans la liste, demande à la direction de la créer : elle apparaît toute seule.</p>
 <p>Le détail du temps général n’est pas l’essentiel. Il sert à voir, pour chacun, la part du temps passée en général et la part réellement passée sur les chantiers. <b>Ce qui compte, c’est de charger le chantier sur lequel on travaille.</b></p>
 
 <h2>6. L’onglet Journée et les corrections</h2>
@@ -127,7 +130,7 @@
 <ul>
   <li><b>Fin de journée oubliée :</b> touche « Fin de journée », puis corrige son heure.</li>
   <li><b>Oublié de commencer :</b> commence maintenant, puis corrige l’heure de début.</li>
-  <li><b>Oublié de changer de centre :</b> touche le bon centre maintenant, puis corrige son heure de début : le centre précédent est raccourci d’autant.</li>
+  <li><b>Oublié de changer de centre ou de bâtiment :</b> touche le bon maintenant, puis corrige son heure de début : le centre précédent est raccourci d’autant.</li>
 </ul>
 <div class="clear"></div>
 
@@ -157,10 +160,10 @@
 
 <div class="sec">
 <h3>Onglet Centres</h3>
-<figure class="fig"><div class="shot"><img src="img/d-centres.png" alt=""></div><figcaption>Les centres communs et les centres à attribuer</figcaption></figure>
+<figure class="fig"><div class="shot"><img src="img/d-centres.png" alt=""></div><figcaption>Les centres communs et les bâtiments</figcaption></figure>
 <ul>
   <li><span class="btn">Ajouter un centre</span> : son nom (l’adresse de l’immeuble, le chantier ou un centre général), un code analytique facultatif, la société.</li>
-  <li><b>Centre commun</b> : coché, le centre est proposé d’office à tous les employés de la société. Décoché, il s’attribue employé par employé.</li>
+  <li><b>Centre commun</b> : coché, le centre s’affiche d’office sur l’écran de tous les employés de la société. Décoché, c’est un bâtiment : il est accessible à tous par le bouton Bâtiments.</li>
   <li><b>Centre par défaut</b> : celui sur lequel la journée commence. Un seul par société.</li>
   <li><b>Actif</b> : décochez pour archiver un centre. Il disparaît du pointage, ses heures restent dans les exports.</li>
   <li><span class="btn c">Importer une liste</span> : collez une liste, un centre par ligne. Pour joindre un code analytique, écrivez « Nom ; code ». Les centres déjà présents sont ignorés.</li>
@@ -171,13 +174,14 @@
 
 <div class="sec">
 <h3>Onglet Employés</h3>
-<figure class="fig"><div class="shot"><img src="img/d-fiche.png" alt=""></div><figcaption>La fiche d’un employé : ses centres</figcaption></figure>
+<figure class="fig"><div class="shot"><img src="img/d-fiche.png" alt=""></div><figcaption>La fiche d’un employé</figcaption></figure>
 <ul>
   <li><span class="btn">Ajouter un employé</span> : prénom, nom, <b>code PIN</b> de 4 à 8 chiffres, société.</li>
-  <li><b>Centres où il charge son temps</b> : les centres communs sont inclus d’office. Cochez en dessous les adresses qui le concernent ; la recherche et « Tout cocher » accélèrent le choix. « Tous les centres de sa société » donne tout, y compris les futurs.</li>
+  <li><b>Bâtiments épinglés sur son écran</b> : tous les bâtiments lui sont accessibles de toute façon. Cochez ici ceux qui doivent s’afficher d’office sur son écran ; ses adresses les plus habituelles s’y ajoutent toutes seules.</li>
   <li><b>Midi obligatoire</b> : active la règle du midi de 60 minutes pour cet employé.</li>
   <li><b>Actif</b> : décochez pour un employé qui ne doit plus pointer. Ses heures restent dans les exports.</li>
   <li><b>Changer un PIN</b> : saisissez-en un nouveau dans la fiche. L’employé devra se reconnecter.</li>
+  <li><span class="btn c">Ouvrir son pointage</span> : ouvre la page de pointage comme si l’employé était connecté sur votre appareil. Vous voyez son écran et sa journée, et pouvez pointer ou corriger à sa place. Pour revenir à l’administration, touchez le chat.</li>
 </ul>
 <p>Un employé qui a déjà des pointages ne peut pas être supprimé : on le désactive.</p>
 <div class="clear"></div>
@@ -203,11 +207,11 @@
 </div>
 
 <h2>11. Questions fréquentes</h2>
-<div class="sec"><h3>J’ai touché le mauvais centre.</h3><p>Touche tout de suite le bon. Si l’erreur a duré, corrige l’heure de début du bon centre dans l’onglet Journée.</p></div>
+<div class="sec"><h3>J’ai touché le mauvais centre ou le mauvais bâtiment.</h3><p>Touche tout de suite le bon. Si l’erreur a duré, corrige l’heure de début du bon centre dans l’onglet Journée.</p></div>
 <div class="sec"><h3>Je travaille pour plusieurs immeubles à la fois.</h3><p>Utilise le centre commun « Immobilier ». Pour plusieurs chantiers à la fois, « Chantiers ».</p></div>
 <div class="sec"><h3>Je n’ai pas de réseau sur le chantier.</h3><p>Pointe normalement. Tout est gardé dans le téléphone et transmis au retour du réseau.</p></div>
 <div class="sec"><h3>J’ai changé de téléphone.</h3><p>Ouvre la page sur le nouveau téléphone et connecte-toi avec ton nom et ton PIN. Tes pointages sont sur le serveur.</p></div>
-<div class="sec"><h3>Le centre dont j’ai besoin n’est pas dans ma liste.</h3><p>Demande à la direction de te l’attribuer. Il apparaît tout seul dans ta liste, sans te reconnecter.</p></div>
+<div class="sec"><h3>L’adresse dont j’ai besoin n’est pas dans Bâtiments.</h3><p>Demande à la direction de la créer. Elle apparaît toute seule dans la liste, sans te reconnecter.</p></div>
 <div class="sec"><h3>Faut-il pointer chaque téléphone ou chaque e-mail ?</h3><p>Non. En dessous de 15 minutes, tout reste en Travail courant.</p></div>
 </body>
 </html>
