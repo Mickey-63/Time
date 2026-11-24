@@ -345,6 +345,25 @@ switch ($a) {
     ]);
   }
 
+  /* L'employé change lui-même son code PIN : l'ancien est exigé ; ses autres appareils sont déconnectés. */
+  case 'pin_change': {
+    $pid = needEmp($in);
+    $key = 'pin:' . $pid . ':' . ip();
+    triesCheck($key);
+    lock();
+    $c = cfg();
+    $i = empIndex($c, $pid);
+    if ($i < 0 || empty($c['employes'][$i]['actif'])) fail('Accès désactivé.', 401);
+    if (empty($c['employes'][$i]['pinHash']) || !password_verify((string) ($in['old'] ?? ''), $c['employes'][$i]['pinHash'])) { triesFail($key); fail('Code PIN actuel incorrect.', 403); }
+    $pin = (string) ($in['new'] ?? '');
+    if (!preg_match('/^\\d{4,8}$/', $pin)) fail('Le nouveau code PIN doit compter 4 à 8 chiffres.');
+    $c['employes'][$i]['pinHash'] = password_hash($pin, PASSWORD_DEFAULT);
+    wr('cfg', $c);
+    triesClear($key);
+    sessDrop('e:' . $pid, (string) $in['token']);
+    out(['ok' => true]);
+  }
+
   case 'logout': {
     $tok = (string) ($in['token'] ?? '');
     if ($tok !== '') { lock(); $s = rd('sess', []); unset($s[hash('sha256', $tok)]); wr('sess', $s); }

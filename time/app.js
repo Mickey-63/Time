@@ -285,7 +285,12 @@
     if (sheet.type === 'menu') {
       h += '<h2>' + esc(S.me.prenom + ' ' + S.me.nom) + '</h2><a class="btn ghost full" href="etat.html">Tableau d’équipe</a>' + window.aide('btn ghost full');
       if (pending()) h += '<div class="note">' + pending() + ' pointage(s) pas encore transmis. Ils restent sur ce téléphone et partiront à ta prochaine connexion.</div>';
-      h += '<button class="btn ghost full" data-act="logout">Se déconnecter</button>';
+      h += '<button class="btn ghost full" data-act="pin">Changer mon code PIN</button><button class="btn ghost full" data-act="logout">Se déconnecter</button>';
+    } else if (sheet.type === 'pin') {
+      h += '<h2>Changer mon code PIN</h2><div class="mute">4 à 8 chiffres. Tes autres appareils devront se reconnecter avec le nouveau code.</div>' +
+        '<label class="f" for="pin-old">Code PIN actuel<input class="pin" id="pin-old" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" value="' + esc(sheet.o || '') + '"></label>' +
+        '<div class="two"><label class="f" for="pin-n1">Nouveau<input class="pin" id="pin-n1" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8" value="' + esc(sheet.n || '') + '"></label><label class="f" for="pin-n2">Confirmer<input class="pin" id="pin-n2" type="password" inputmode="numeric" autocomplete="new-password" maxlength="8" value="' + esc(sheet.n2 || '') + '"></label></div>' +
+        (sheet.err ? '<div class="err" role="alert">' + esc(sheet.err) + '</div>' : '') + '<button class="btn full" data-act="pin-save"' + (sheet.busy ? ' disabled' : '') + '>Enregistrer</button>';
     } else if (sheet.type === 'bat') {
       var st = E.statusOf(evs()), t = now(), today = E.dayKey(t), tt = E.totals(E.pieces(evs(), t).filter(function (x) { return x.date === today; }));
       var q = (sheet.q || '').trim().toLowerCase(), bat = batiments();
@@ -338,6 +343,17 @@
     login: function () { login(); return false; },
     logout: function () { logout(); },
     menu: function () { sheet = { type: 'menu' }; },
+    pin: function () { sheet = { type: 'pin' }; },
+    'pin-save': function () {
+      var v = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }, o = v('pin-old'), n = v('pin-n1'), n2 = v('pin-n2');
+      var bad = !o ? 'Saisis ton code PIN actuel.' : !/^\d{4,8}$/.test(n) ? 'Le nouveau code PIN doit compter 4 à 8 chiffres.' : n !== n2 ? 'Les deux saisies ne correspondent pas.' : n === o ? 'Le nouveau code est identique à l’ancien.' : '';
+      sheet.o = o; sheet.n = n; sheet.n2 = n2; // les saisies survivent au réaffichage
+      if (bad) { sheet.err = bad; render(true); return false; }
+      sheet.err = ''; sheet.busy = true; render(true);
+      api('pin_change', { token: S.token, old: o, new: n }).then(function () { sheet = null; toast('Code PIN changé.'); },
+        function (e) { if (sheet) { sheet.busy = false; sheet.err = e.status ? e.message : 'Serveur injoignable. Réessaie avec du réseau.'; } }).then(function () { render(true); });
+      return false;
+    },
     close: function () { sheet = null; },
     'close-veil': function (ds, el, ev) { if (ev.target === el) sheet = null; else return false; },
     tab: function (ds) { S.tab = ds.t; var m = document.getElementById('main'); if (m) m.scrollTop = 0; },

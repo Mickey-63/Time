@@ -230,6 +230,16 @@
      f = { soc, pid, from, to } */
   var ETAT = { brouillon: 'Brouillon', soumis: 'Soumis', valide: 'Validé', renvoye: 'Renvoyé' };
   var TRANSF = { '': '—', a_transmettre: 'À transmettre', transmis: 'Transmis', accepte: 'Accepté', a_corriger: 'À corriger' };
+  /* Feuille « Centres » : la liste complète des centres et de leurs champs. Les deux premières colonnes (Centre, Code analytique)
+     se recollent telles quelles dans « Importer une liste » de l'administration. */
+  function centresSheet(dossiers, socs) {
+    var list = Array.isArray(dossiers) ? dossiers.slice() : Object.keys(dossiers).map(function (k) { return dossiers[k]; });
+    var sn = function (id) { return id && socs[id] ? socs[id].nom : '—'; };
+    list.sort(function (a, b) { return sn(a.soc).localeCompare(sn(b.soc), 'fr') || ((b.commun ? 1 : 0) - (a.commun ? 1 : 0)) || ((b.defaut ? 1 : 0) - (a.defaut ? 1 : 0)) || String(a.nom).localeCompare(String(b.nom), 'fr', { numeric: true }); });
+    var rows = [['Centre', 'Code analytique', 'Société', 'Type', 'Par défaut', 'Actif'].map(function (v) { return { v: v, s: 1 }; })];
+    list.forEach(function (d) { rows.push([d.nom, d.code || '', sn(d.soc), d.commun ? 'Commun' : 'Bâtiment', d.defaut ? 'Oui' : '', d.actif === false ? 'Non' : 'Oui']); });
+    return { name: 'Centres', rows: rows, widths: [42, 18, 24, 12, 11, 8] };
+  }
   function workbook(m, f, now) {
     var S = { h: 1, date: 2, time: 3, dur: 4, chf: 5, b: 6, bdur: 7 };
     function hd(v) { return { v: v, s: S.h }; }
@@ -292,7 +302,8 @@
       sheets: [
         { name: 'Détail', rows: detail, widths: [12, 22, 22, 30, 16, 12, 8, 8, 11, 9, 9, 11, 9] },
         { name: 'Par centre', rows: sd, widths: [22, 32, 16, 22, 11] },
-        { name: 'Par collaborateur', rows: sc, widths: [22, 14, 11, 11] }
+        { name: 'Par collaborateur', rows: sc, widths: [22, 14, 11, 11] },
+        centresSheet(m.dossiers, m.socs)
       ],
       totals: { detailTravail: detail.slice(1).reduce(function (a, r) { return a + (r[8] === 'Travail' ? r[9].v : 0); }, 0) * DAY, parDossier: totD, parCollab: totT, pauses: totP, lignes: detail.length - 1 }
     };
@@ -304,7 +315,7 @@
     weekKey: weekKey, hhmm: hhmm, atTime: atTime, excelSerial: excelSerial, excelDate: excelDate, dur: dur, frDate: frDate, pad: pad,
     sortEvents: sortEvents, segments: segments, splitByDay: splitByDay, pieces: pieces, statusOf: statusOf, act: act,
     totals: totals, legalCheck: legalCheck, midiCheck: midiCheck, rkey: rkey, interventions: interventions,
-    montants: montants, refRapport: refRapport, transmettre: transmettre, canMove: canMove, ctxOf: ctxOf, workbook: workbook
+    montants: montants, refRapport: refRapport, transmettre: transmettre, canMove: canMove, ctxOf: ctxOf, workbook: workbook, centresSheet: centresSheet
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 

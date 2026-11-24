@@ -82,7 +82,7 @@
     return h + '</div>';
   }
   function vDossiers() {
-    var h = '<div class="btns"><button class="btn" data-act="dos-new">Ajouter un centre</button><button class="btn ghost" data-act="imp-new">Importer une liste</button></div>' +
+    var h = '<div class="btns"><button class="btn" data-act="dos-new">Ajouter un centre</button><button class="btn ghost" data-act="imp-new">Importer une liste</button>' + (cfg.dossiers.length ? '<button class="btn ghost" data-act="dos-xlsx">Exporter la liste</button>' : '') + '</div>' +
       '<div class="mute small">Un centre analytique est ce sur quoi on charge le temps. Les centres communs s’affichent d’office sur l’écran de tous les employés de la société. Les autres (adresses d’immeubles, chantiers) sont accessibles à tous par le bouton Bâtiments.</div>';
     if (!cfg.dossiers.length) return h + '<div class="note">Aucun centre pour l’instant. Sans centre, personne ne peut pointer.</div>';
     var ligne = function (d) {
@@ -107,7 +107,7 @@
       '<label class="f" for="ex-soc">Société<select id="ex-soc" data-ex="soc">' + opt('', 'Toutes', ex.soc) + Object.keys(cfg.socs).map(function (s) { return opt(s, cfg.socs[s].nom, ex.soc); }).join('') + '</select></label>' +
       (exErr ? '<div class="err" role="alert">' + esc(exErr) + '</div>' : '') + (exMsg ? '<div class="ok-msg" role="status">' + esc(exMsg) + '</div>' : '') +
       '<button class="btn full" data-act="export"' + (busy ? ' disabled' : '') + '>' + (busy ? 'Préparation…' : 'Télécharger le classeur .xlsx') + '</button></div>' +
-      '<div class="mute small">Trois feuilles : Détail (chaque plage avec début, fin, centre, code analytique), Par centre, Par collaborateur. Dates et durées numériques, cumuls au-delà de 24 h, minuit ventilé sur deux dates. Une plage encore ouverte est marquée « Provisoire », une heure corrigée « Oui » dans la colonne Corrigé.</div>';
+      '<div class="mute small">Quatre feuilles : Détail (chaque plage avec début, fin, centre, code analytique), Par centre, Par collaborateur, et Centres (la liste complète des centres et bâtiments, à garder comme sauvegarde). Dates et durées numériques, cumuls au-delà de 24 h, minuit ventilé sur deux dates. Une plage encore ouverte est marquée « Provisoire », une heure corrigée « Oui » dans la colonne Corrigé.</div>';
   }
   function vReglages() {
     var R = cfg.regles, base = location.href.replace(/[^/]*([?#].*)?$/, '');
@@ -278,6 +278,12 @@
     'emp-all': function () { empCoche(true); },
     'emp-none': function () { empCoche(false); },
     'dos-new': function () { sheet = { type: 'dos', x: { id: '', nom: '', code: '', soc: cfg.lastSoc || Object.keys(cfg.socs)[0], actif: true, commun: false, defaut: false } }; },
+    // Sauvegarde de la liste des centres : un classeur d'une feuille, rechargeable par « Importer une liste ».
+    'dos-xlsx': function () {
+      var name = 'Centres_' + E.dayKey(Date.now()) + '.xlsx';
+      download(name, window.XlsxLite.build([E.centresSheet(cfg.dossiers, cfg.socs)]));
+      flash = name + ' : ' + cfg.dossiers.length + ' centres.';
+    },
     'imp-new': function () { sheet = { type: 'imp', x: { soc: cfg.lastSoc || Object.keys(cfg.socs)[0], txt: '', commun: false } }; },
     'imp-save': function () {
       var x = sheet.x, vus = {}, items = [];
@@ -333,7 +339,7 @@
         var ds = {}; r.dossiers.forEach(function (d) { ds[d.id] = d; });
         var people = r.employes.slice().sort(byName), now = Date.now();
         var wb = E.workbook({ people: people, dossiers: ds, socs: r.socs, evs: function (pid) { return r.events[pid] || []; } }, { from: ex.from, to: ex.to, pid: ex.pid, soc: ex.soc }, now);
-        if (!wb.totals.lignes) { exErr = 'Aucun pointage sur cette période avec ces filtres.'; return; }
+        if (!wb.totals.lignes) { exErr = 'Aucun pointage sur cette période avec ces filtres. Pour la seule liste des centres : onglet Centres, « Exporter la liste ».'; return; }
         var name = 'Heures_' + ex.from + '_au_' + ex.to + '.xlsx';
         download(name, window.XlsxLite.build(wb.sheets));
         exMsg = name + ' : ' + wb.totals.lignes + ' lignes, ' + E.dur(wb.totals.parCollab) + ' de travail, ' + E.dur(wb.totals.pauses) + ' de pauses.';
@@ -357,7 +363,7 @@
   root.addEventListener('click', function (ev) {
     var el = ev.target.closest('[data-act]'); if (!el || el.disabled) return;
     var fn = H[el.getAttribute('data-act')]; if (!fn) return;
-    if (!/-(save|del)$|^(regles|apass|export|setup|alogin|oubli|prov-save|emp-as)$/.test(el.getAttribute('data-act'))) flash = '';
+    if (!/-(save|del)$|^(regles|apass|export|setup|alogin|oubli|prov-save|emp-as|dos-xlsx)$/.test(el.getAttribute('data-act'))) flash = '';
     if (fn(el.dataset, el, ev) === false) return;
     render();
   });

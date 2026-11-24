@@ -10,7 +10,7 @@
   <div>
     <h1>Time GIOT<br><span class="rouge">Mode d’emploi</span></h1>
     <div class="sub">Le pointage du temps de travail par centre analytique, sur le téléphone.</div>
-    <div class="ver" style="margin-top:4pt">Version 2 du 24 novembre 2026 · GIOT Immobilier SA · Le résumé en une page s’appelle « Time GIOT pour les nuls ».</div>
+    <div class="ver" style="margin-top:4pt">Version 3 du 24 novembre 2026 · GIOT Immobilier SA · Le résumé en une page s’appelle « Time GIOT pour les nuls ».</div>
   </div>
   <div class="logo"><img src="../time/giot.png" alt="GIOT"><img src="../time/chat.png" alt=""></div>
 </div>
@@ -34,6 +34,7 @@
 </ol>
 <p>Tu restes ensuite connecté sur ce téléphone : pas besoin de retaper le PIN chaque jour. Pour te déconnecter, touche ton nom en haut à gauche, puis « Se déconnecter ».</p>
 <p><b>Raccourci sur l’écran d’accueil (iPhone) :</b> dans Safari, touche le bouton Partager, puis « Sur l’écran d’accueil ». Time GIOT s’ouvre alors comme une application.</p>
+<p><b>Changer ton code PIN :</b> touche ton nom en haut à gauche, puis « Changer mon code PIN ». Tape le code actuel, puis le nouveau deux fois (4 à 8 chiffres).</p>
 <p><b>Six codes PIN faux de suite</b> bloquent la connexion pendant 15 minutes. Si tu as oublié ton PIN, la direction t’en donne un nouveau.</p>
 <p>Sur cette même page, deux liens ouvrent les modes d’emploi : celui-ci, et le résumé « Time GIOT pour les nuls ».</p>
 <div class="clear"></div>
@@ -42,7 +43,7 @@
 <figure class="fig"><div class="shot"><img src="img/courant.png" alt=""></div><figcaption>En travail, sur « Travail courant »</figcaption></figure>
 <p>De haut en bas :</p>
 <ul>
-  <li><b>Ton nom</b> (menu : tableau d’équipe, modes d’emploi, déconnexion) et le logo GIOT.</li>
+  <li><b>Ton nom</b> (menu : tableau d’équipe, modes d’emploi, changement du code PIN, déconnexion) et le logo GIOT.</li>
   <li><b>Le bandeau de statut</b>, en couleur : ce que tu fais en ce moment, sur quel centre, depuis quelle heure, et le temps passé aujourd’hui sur ce centre.</li>
   <li><b>Le lieu</b> : <span class="btn c">Au bureau</span> ou <span class="btn c">En déplacement</span>.</li>
   <li><b>Les centres communs</b>, puis <b>« Mes bâtiments »</b> : le bâtiment en cours, tes favoris et tes adresses les plus habituelles. Le centre en cours est en couleur. Chaque tuile affiche le temps déjà passé dessus aujourd’hui.</li>
@@ -167,6 +168,7 @@
   <li><b>Centre par défaut</b> : celui sur lequel la journée commence. Un seul par société.</li>
   <li><b>Actif</b> : décochez pour archiver un centre. Il disparaît du pointage, ses heures restent dans les exports.</li>
   <li><span class="btn c">Importer une liste</span> : collez une liste, un centre par ligne. Pour joindre un code analytique, écrivez « Nom ; code ». Les centres déjà présents sont ignorés.</li>
+  <li><span class="btn c">Exporter la liste</span> : télécharge un classeur Excel avec tous les centres et leurs champs. Gardez-le comme sauvegarde : ses deux premières colonnes se recollent telles quelles dans « Importer une liste ».</li>
 </ul>
 <p>Un centre sur lequel des heures sont déjà chargées ne peut pas être supprimé : on l’archive.</p>
 <div class="clear"></div>
@@ -190,11 +192,12 @@
 <div class="sec">
 <h3>Onglet Export Excel</h3>
 <figure class="fig"><div class="shot"><img src="img/d-export.png" alt=""></div><figcaption>L’export des heures</figcaption></figure>
-<p>Choisissez la période (ce mois, le mois dernier, cette année ou des dates libres), éventuellement un collaborateur et une société, puis téléchargez le classeur. Il contient trois feuilles :</p>
+<p>Choisissez la période (ce mois, le mois dernier, cette année ou des dates libres), éventuellement un collaborateur et une société, puis téléchargez le classeur. Il contient quatre feuilles :</p>
 <ul>
   <li><b>Détail</b> : chaque plage avec la date, le collaborateur, le centre, le code analytique, le lieu, le début, la fin et la durée ;</li>
   <li><b>Par centre</b> : le total des heures par centre et par collaborateur, pour le report dans Astuces ;</li>
-  <li><b>Par collaborateur</b> : le total de chacun.</li>
+  <li><b>Par collaborateur</b> : le total de chacun ;</li>
+  <li><b>Centres</b> : la liste complète des centres et bâtiments (nom, code analytique, société, type, par défaut, actif).</li>
 </ul>
 <p>Une plage encore en cours est marquée « Provisoire ». Une heure corrigée porte « Oui » dans la colonne Corrigé.</p>
 <h3>Onglet Réglages</h3>
