@@ -43,3 +43,5 @@ td:first-child { white-space: nowrap; font-weight: 700; padding-right: 10pt; }
 .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
 .duo ul { margin: 0; padding-left: 13pt; }
 .duo li { font-size: 9.6pt; }
+.logo2 { flex: none; height: 27mm; }
+.logo2 img { height: 100%; display: block; }

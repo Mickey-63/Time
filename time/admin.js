@@ -38,7 +38,7 @@
     return '<header class="bar"><div class="row"><h1>Administration</h1>' + LOGO + '</div><div class="mute small">' + sub + '</div></header>';
   }
   function vGate() {
-    var h = head('Pointage GIOT Immobilier SA et OptimalGo SA') + '<main id="main">';
+    var h = head('GIOT Immobilier SA et OptimalGo SA') + '<main id="main">';
     if (pret === null) return h + '<div class="mute">' + (loadErr ? 'Serveur injoignable.' : 'Chargement…') + '</div>' + (loadErr ? '<button class="btn" data-act="retry">Réessayer</button>' : '') + '</main>';
     if (!pret) {
       h += '<div class="card"><h3>Créer le mot de passe d’administration</h3><div class="mute">Première ouverture : ce mot de passe protège les employés, les centres analytiques et les exports. Il n’est enregistré que sur votre serveur. Au moins ' + PW_MIN + ' caractères.</div>' +
@@ -57,7 +57,7 @@
   }
   // Connexion avec le mot de passe provisoire reçu par e-mail : on choisit tout de suite le nouveau.
   function vProv() {
-    return head('Pointage GIOT Immobilier SA et OptimalGo SA') + '<main id="main"><div class="card"><h3>Choisir un nouveau mot de passe</h3>' +
+    return head('GIOT Immobilier SA et OptimalGo SA') + '<main id="main"><div class="card"><h3>Choisir un nouveau mot de passe</h3>' +
       '<div class="mute">Vous êtes connecté avec le mot de passe provisoire. Choisissez maintenant le vôtre : au moins ' + PW_MIN + ' caractères.</div>' +
       '<label class="f" for="pn1">Nouveau mot de passe<input id="pn1" type="password" autocomplete="new-password"></label>' +
       '<label class="f" for="pn2">Confirmer<input id="pn2" type="password" autocomplete="new-password"></label>' +

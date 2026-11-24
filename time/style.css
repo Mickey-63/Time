@@ -6,6 +6,7 @@
   --on-vert: #ffffff; --on-bleu: #ffffff; --on-orange: #231400; --on-gris: #ffffff;
   --f-display: 'Barlow Semi Condensed', 'Arial Narrow', system-ui, sans-serif;
   --f-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --gtp: url(giotimepro.png?v=1);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -13,7 +14,7 @@
     --paper: #0f141a; --card: #19212a; --ink: #edf1f5; --mute: #9aa7b6; --line: #2d3844;
     --accent: #edf1f5; --on-accent: #0f141a; --alert: #ff8a80; --alert-bg: #3a1c1a;
     --vert: #1f9a56; --bleu: #3577ea; --orange: #f09a1a; --gris: #5d6976;
-    --logo-fx: drop-shadow(0 0 .6px rgba(237, 241, 245, .95)) drop-shadow(0 0 .6px rgba(237, 241, 245, .95));
+    --logo-fx: drop-shadow(0 0 .6px rgba(237, 241, 245, .95)) drop-shadow(0 0 .6px rgba(237, 241, 245, .95)); --gtp: url(giotimepro-sombre.png?v=1);
     color-scheme: dark;
   }
 }
@@ -21,7 +22,7 @@
   --paper: #0f141a; --card: #19212a; --ink: #edf1f5; --mute: #9aa7b6; --line: #2d3844;
   --accent: #edf1f5; --on-accent: #0f141a; --alert: #ff8a80; --alert-bg: #3a1c1a;
   --vert: #1f9a56; --bleu: #3577ea; --orange: #f09a1a; --gris: #5d6976;
-  --logo-fx: drop-shadow(0 0 .6px rgba(237, 241, 245, .95)) drop-shadow(0 0 .6px rgba(237, 241, 245, .95));
+  --logo-fx: drop-shadow(0 0 .6px rgba(237, 241, 245, .95)) drop-shadow(0 0 .6px rgba(237, 241, 245, .95)); --gtp: url(giotimepro-sombre.png?v=1);
   color-scheme: dark;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -262,3 +263,6 @@ h3.soc { font-size: 20px; margin-top: 4px; }
 .note .btn.sm { margin-top: 8px; display: block; }
 .sheet .seg { margin-top: 2px; }
 .seg.c3 { grid-template-columns: repeat(3, 1fr); }
+
+/* Mot-symbole GIOTimePRO dans le logo de toutes les pages ; variante claire en mode sombre */
+.logo .mq { display: block; height: 100%; aspect-ratio: 669 / 164; background: var(--gtp) left top / contain no-repeat; }

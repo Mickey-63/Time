@@ -4,7 +4,7 @@ import pathlib
 from playwright.sync_api import sync_playwright
 ICI = pathlib.Path(__file__).resolve().parent
 SORTIE = ICI.parent / 'time'
-DOCS = [('detail.html', 'time-giot-mode-emploi.pdf', 'Time GIOT · Mode d’emploi'), ('nuls.html', 'time-giot-pour-les-nuls.pdf', '')]
+DOCS = [('detail.html', 'giotimepro-mode-emploi.pdf', 'GIOTimePRO · Mode d’emploi'), ('nuls.html', 'giotimepro-pour-les-nuls.pdf', '')]
 PIED = '<div style="width:100%%;font-family:Liberation Sans,Arial,sans-serif;font-size:7.5pt;color:#5a6777;padding:0 15mm;display:flex;justify-content:space-between"><span>%s</span><span>page <span class="pageNumber"></span> / <span class="totalPages"></span></span></div>'
 with sync_playwright() as p:
     b = p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox'])
