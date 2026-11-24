@@ -1,4 +1,4 @@
-/* Administration : employés, centres analytiques (communs à tous ou attribués), affectations, export Excel, réglages.
+/* Administration : employés, centres analytiques (communs à tous ou attribués), affectations, export Excel, réglages, documents.
    Protégée par un mot de passe créé à la première ouverture ; il n'existe que sur le serveur, sous forme hachée. */
 (function () {
   'use strict';
@@ -11,6 +11,9 @@
   var PW_MIN = 6;
   var today = E.dayKey(Date.now());
   var ex = { from: today.slice(0, 8) + '01', to: today, pid: '', soc: '' }, exMsg = '', exErr = '';
+  // Documents (synthèses, rapports) : la liste vient du serveur, chaque PDF n'est chargé qu'à la demande.
+  var docs = null, docErr = '', docMsg = '', docBusy = '', docF = {};
+  var appli = !!navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
 
   function setToken(t) { token = t || ''; try { if (token) sessionStorage.setItem(KEY, token); else sessionStorage.removeItem(KEY); } catch (e) { } }
   function call(a, body) {
@@ -65,7 +68,7 @@
       '<button class="btn full" data-act="prov-save"' + (busy ? ' disabled' : '') + '>Enregistrer</button></div></main>';
   }
   function tabsBar() {
-    var list = [['employes', 'Employés'], ['dossiers', 'Centres'], ['absences', 'Absences'], ['export', 'Export'], ['reglages', 'Réglages']];
+    var list = [['employes', 'Employés'], ['dossiers', 'Centres'], ['absences', 'Absences'], ['export', 'Export'], ['reglages', 'Réglages'], ['docs', 'Docs']];
     return '<nav class="tabs" aria-label="Sections">' + list.map(function (t) { return '<button data-act="tab" data-t="' + t[0] + '" aria-current="' + (t[0] === tab) + '">' + t[1] + '</button>'; }).join('') + '</nav>';
   }
   function vEmployes() {
@@ -152,6 +155,26 @@
       '<button class="btn full" data-act="export"' + (busy ? ' disabled' : '') + '>' + (busy ? 'Préparation…' : 'Télécharger le classeur .xlsx') + '</button></div>' +
       '<div class="mute small">Cinq feuilles : Détail (chaque plage avec début, fin, centre, code analytique, code d’intervention et note), Par centre, Par collaborateur, Absences (vacances, maladie, accident, jours fériés de la période, avec les jours ouvrés et les totaux par personne) et Centres (la liste complète des centres et bâtiments, à garder comme sauvegarde). Dates et durées numériques, cumuls au-delà de 24 h, minuit ventilé sur deux dates. Une plage encore ouverte est marquée « Provisoire », une heure corrigée « Oui » dans la colonne Corrigé.</div>';
   }
+  function partageable(f) { try { return !!(window.File && navigator.canShare && navigator.canShare({ files: [f] })); } catch (e) { return false; } }
+  function vDocs() {
+    var h = '<div class="mute small">Synthèses et rapports du projet, déposés par Claude. Ils ne se lisent qu’ici, avec le mot de passe d’administration : les employés n’y ont pas accès.</div>' +
+      (docErr ? '<div class="err" role="alert">' + esc(docErr) + '</div>' : '') + (docMsg ? '<div class="ok-msg" role="status">' + esc(docMsg) + '</div>' : '');
+    if (!docs) return h + (docErr ? '<button class="btn ghost full" data-act="docs-load">Réessayer</button>' : '<div class="note">Chargement…</div>');
+    if (!docs.length) return h + '<div class="note">Aucun document pour l’instant.</div>';
+    h += '<div class="card lst">';
+    docs.forEach(function (d) {
+      var f = docF[d.id], b;
+      if (!f) b = '<button class="btn sm" data-act="doc-open" data-id="' + esc(d.id) + '"' + (docBusy ? ' disabled' : '') + '>' + (docBusy === d.id ? 'Chargement…' : 'Ouvrir') + '</button>';
+      else b = (partageable(f.file) ? '<button class="btn sm" data-act="doc-share" data-id="' + esc(d.id) + '">Enregistrer ou imprimer</button>' : '') +
+        (appli ? '' : '<a class="btn ghost sm" href="' + f.url + '" download="' + esc(d.nom) + '" target="_blank" rel="noopener">Télécharger</a>');
+      h += '<div class="row top"><div><b>' + esc(d.titre) + '</b><div class="mute small">PDF du ' + E.frDate(E.dayKey(d.ts)) + ' · ' + Math.max(1, Math.round(d.octets / 1024)) + ' Ko</div></div><div class="btns">' + b + '</div></div>';
+    });
+    return h + '</div>';
+  }
+  function docsLoad() {
+    docErr = '';
+    call('docs').then(function (r) { docs = r.docs || []; }, function (e) { docErr = msgOf(e); }).then(render);
+  }
   function vReglages() {
     var R = cfg.regles, base = location.href.replace(/[^/]*([?#].*)?$/, '');
     var num = function (id, lab, v) { return '<label class="f" for="rg-' + id + '">' + lab + '<input type="number" inputmode="numeric" min="0" max="240" id="rg-' + id + '" value="' + v + '"></label>'; };
@@ -232,7 +255,7 @@
     var m = document.getElementById('main'), sc = m ? m.scrollTop : 0, sh = root.querySelector('.sheet'), ssc = sh ? sh.scrollTop : 0;
     if (!cfg) { root.innerHTML = vGate(); return; }
     if (prov) { root.innerHTML = vProv(); return; }
-    var body = tab === 'dossiers' ? vDossiers() : tab === 'absences' ? vAbsences() : tab === 'export' ? vExport() : tab === 'reglages' ? vReglages() : vEmployes();
+    var body = tab === 'dossiers' ? vDossiers() : tab === 'absences' ? vAbsences() : tab === 'export' ? vExport() : tab === 'reglages' ? vReglages() : tab === 'docs' ? vDocs() : vEmployes();
     var actifs = cfg.employes.filter(function (e) { return e.actif; }).length, dAct = cfg.dossiers.filter(function (d) { return d.actif; }).length;
     root.innerHTML = head(actifs + ' employé' + (actifs > 1 ? 's' : '') + ' actif' + (actifs > 1 ? 's' : '') + ', ' + dAct + ' centre' + (dAct > 1 ? 's' : '') + ' actif' + (dAct > 1 ? 's' : '')) +
       '<main id="main">' + (flash ? '<div class="ok-msg" role="status">' + esc(flash) + '</div>' : '') + body + '</main>' + tabsBar() + vSheet();
@@ -263,7 +286,27 @@
   }
   var H = {
     retry: function () { start(); },
-    tab: function (ds) { tab = ds.t; err = ''; flash = ''; exMsg = ''; exErr = ''; var m = document.getElementById('main'); if (m) m.scrollTop = 0; },
+    tab: function (ds) { tab = ds.t; err = ''; flash = ''; exMsg = ''; exErr = ''; docMsg = ''; var m = document.getElementById('main'); if (m) m.scrollTop = 0; if (tab === 'docs') docsLoad(); },
+    'docs-load': function () { docsLoad(); },
+    // Le PDF est chargé au premier toucher ; sur iPhone, le partage doit suivre immédiatement un toucher, d'où le second bouton.
+    'doc-open': function (ds) {
+      docErr = ''; docMsg = ''; docBusy = ds.id;
+      call('doc', { id: ds.id }).then(function (r) {
+        var bin = atob(r.pdf), u = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+        var blob = new Blob([u], { type: 'application/pdf' });
+        docF[ds.id] = { file: window.File ? new File([blob], r.nom, { type: 'application/pdf' }) : null, url: URL.createObjectURL(blob), titre: r.titre };
+        if (appli && !partageable(docF[ds.id].file)) docMsg = 'Pour enregistrer ce PDF, ouvrez l’administration dans le navigateur du téléphone.';
+      }, function (e) { docErr = msgOf(e); }).then(function () { docBusy = ''; render(); });
+    },
+    'doc-share': function (ds) {
+      var f = docF[ds.id]; if (!f) return;
+      navigator.share({ files: [f.file], title: f.titre }).catch(function (e) {
+        if (e && e.name === 'AbortError') return;
+        docErr = 'Le partage n’a pas abouti. Ouvrez l’administration dans le navigateur pour récupérer le PDF.'; render();
+      });
+      return false;
+    },
     close: function () { sheet = null; },
     'close-veil': function (ds, el, ev) { if (ev.target === el) sheet = null; else return false; },
     setup: function () {

@@ -676,6 +676,60 @@ switch ($a) {
   }
 
   /* L'administration ouvre le pointage d'un employé, comme s'il était connecté (contrôle, essais, correction d'un oubli). */
+  /* Documents de l'administration (synthèses, rapports). Le document est posé chiffré par le dépôt (depot.php) ; la clé n'est
+     jamais dans le dépôt. Déchiffré, il est rangé dans data/, hors dépôt, et ne se lit qu'avec la session d'administration.
+     Un dépôt portant un identifiant déjà connu remplace le document. */
+  case 'doc_secret': {
+    $f = __DIR__ . '/depot.php';
+    if (!is_file($f)) fail('Rien à déposer.', 404);
+    $r = include $f;
+    $k = (string) ($_GET['k'] ?? '');
+    if (!is_array($r) || !preg_match('/^[0-9a-f]{64}$/', $k)) fail('Clé invalide.', 403);
+    if (!function_exists('openssl_decrypt')) fail('OpenSSL absent sur ce serveur.', 500);
+    $txt = openssl_decrypt((string) base64_decode((string) $r['data']), 'aes-256-gcm', (string) hex2bin($k), OPENSSL_RAW_DATA, (string) base64_decode((string) $r['iv']), (string) base64_decode((string) $r['tag']));
+    $m = $txt === false ? null : json_decode($txt, true);
+    if (!is_array($m) || !isset($m['pdf'], $m['nom'], $m['titre'])) fail('Clé invalide.', 403);
+    $id = (string) ($r['id'] ?? '');
+    if (!preg_match('/^[a-z0-9-]{3,60}$/', $id)) fail('Identifiant invalide.');
+    $pdf = base64_decode((string) $m['pdf'], true);
+    if ($pdf === false || strncmp($pdf, '%PDF', 4) !== 0) fail('Document illisible.', 400);
+    lock();
+    $L = [];
+    foreach (rd('docs', []) as $d) if (($d['id'] ?? '') !== $id) $L[] = $d;
+    wr('doc_' . $id, ['pdf' => base64_encode($pdf)]);
+    array_unshift($L, ['id' => $id, 'titre' => cut((string) $m['titre'], 120), 'nom' => (string) preg_replace('/[^A-Za-z0-9._-]/', '-', (string) $m['nom']), 'ts' => NOW, 'octets' => strlen($pdf)]);
+    wr('docs', $L);
+    out(['ok' => true, 'id' => $id, 'octets' => strlen($pdf), 'documents' => count($L)]);
+  }
+
+  case 'docs': {
+    needAdmin($in);
+    out(['docs' => rd('docs', [])]);
+  }
+
+  case 'doc': {
+    needAdmin($in);
+    $id = (string) ($in['id'] ?? '');
+    if (!preg_match('/^[a-z0-9-]{3,60}$/', $id)) fail('Document introuvable.', 404);
+    $meta = null;
+    foreach (rd('docs', []) as $d) if (($d['id'] ?? '') === $id) $meta = $d;
+    $x = rd('doc_' . $id, []);
+    if (!$meta || empty($x['pdf'])) fail('Document introuvable.', 404);
+    out(['id' => $id, 'nom' => $meta['nom'], 'titre' => $meta['titre'], 'pdf' => $x['pdf']]);
+  }
+
+  case 'doc_del': {
+    needAdmin($in);
+    $id = (string) ($in['id'] ?? '');
+    if (!preg_match('/^[a-z0-9-]{3,60}$/', $id)) fail('Document introuvable.', 404);
+    lock();
+    $L = [];
+    foreach (rd('docs', []) as $d) if (($d['id'] ?? '') !== $id) $L[] = $d;
+    wr('docs', $L);
+    @unlink(fpath('doc_' . $id));
+    out(['docs' => $L]);
+  }
+
   case 'emp_as': {
     needAdmin($in);
     $c = cfg();
