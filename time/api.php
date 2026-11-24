@@ -566,6 +566,40 @@ switch ($a) {
     out(['ajoutes' => $n, 'doublons' => $dbl, 'total' => $tot]);
   }
 
+  /* Envoi d'un document à l'administratrice (adresse fixe MAIL_ADMIN) : le document est posé chiffré par le dépôt (envoi.php),
+     la clé n'est jamais dans le dépôt et chaque envoi ne part qu'une fois. */
+  case 'envoi_secret': {
+    $f = __DIR__ . '/envoi.php';
+    if (!is_file($f)) fail('Rien à envoyer.', 404);
+    $r = include $f;
+    $k = (string) ($_GET['k'] ?? '');
+    if (!is_array($r) || !preg_match('/^[0-9a-f]{64}$/', $k)) fail('Clé invalide.', 403);
+    if (!function_exists('openssl_decrypt')) fail('OpenSSL absent sur ce serveur.', 500);
+    $txt = openssl_decrypt((string) base64_decode((string) $r['data']), 'aes-256-gcm', (string) hex2bin($k), OPENSSL_RAW_DATA, (string) base64_decode((string) $r['iv']), (string) base64_decode((string) $r['tag']));
+    $m = $txt === false ? null : json_decode($txt, true);
+    if (!is_array($m) || !isset($m['pdf'], $m['nom'], $m['sujet'], $m['texte'])) fail('Clé invalide.', 403);
+    lock();
+    $c = cfg();
+    $id = (string) ($r['id'] ?? '');
+    if ($id === '' || in_array($id, $c['envois'] ?? [], true)) fail('Ce document est déjà parti.', 409);
+    $pdf = base64_decode((string) $m['pdf'], true);
+    if ($pdf === false || strncmp($pdf, '%PDF', 4) !== 0) fail('Document illisible.', 400);
+    $nom = (string) preg_replace('/[^A-Za-z0-9._-]/', '-', (string) $m['nom']);
+    $host = strtolower((string) preg_replace('/^www\\.|:\\d+$/', '', (string) ($_SERVER['HTTP_HOST'] ?? '')));
+    if (!preg_match('/^[a-z0-9.-]+\\.[a-z]{2,}$/', $host)) $host = 'le-top.ch';
+    $b = 'b' . bin2hex(random_bytes(12));
+    $tetes = 'From: Time GIOT <noreply@' . $host . ">\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"" . $b . '"';
+    $corps = '--' . $b . "\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n" . str_replace("\n", "\r\n", str_replace("\r", '', (string) $m['texte'])) . "\r\n"
+      . '--' . $b . "\r\nContent-Type: application/pdf; name=\"" . $nom . "\"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"" . $nom . "\"\r\n\r\n" . chunk_split(base64_encode($pdf))
+      . '--' . $b . "--\r\n";
+    $ok = function_exists('mail') && @mail(MAIL_ADMIN, '=?UTF-8?B?' . base64_encode(cut((string) $m['sujet'], 120)) . '?=', $corps, $tetes);
+    if (!$ok) fail('Le serveur n’a pas pu envoyer l’e-mail.', 500);
+    $c['envois'][] = $id;
+    wr('cfg', $c);
+    [$u, $d] = explode('@', MAIL_ADMIN);
+    out(['ok' => true, 'a' => substr($u, 0, 1) . '…@' . $d, 'octets' => strlen($pdf)]);
+  }
+
   /* L'administration ouvre le pointage d'un employé, comme s'il était connecté (contrôle, essais, correction d'un oubli). */
   case 'emp_as': {
     needAdmin($in);
