@@ -29,4 +29,5 @@ with sync_playwright() as p:
     pg4.click('.lst .row:has-text("Anna Exemple") [data-act=emp-edit]'); pg4.wait_for_timeout(300); pg4.evaluate("document.querySelector('.sheet').scrollTop = 9999"); pg4.wait_for_timeout(200); pg4.screenshot(path=OUT + 'admin-fiche.png'); pg4.click('[data-act=close]')
     pg4.click('[data-t=dossiers]'); pg4.wait_for_timeout(300); pg4.screenshot(path=OUT + 'admin-centres.png')
     pg4.click('[data-t=export]'); pg4.wait_for_timeout(300); pg4.screenshot(path=OUT + 'admin-export.png')
+    pg4.set_viewport_size({'width': 390, 'height': 860}); pg4.click('[data-t=absences]'); pg4.wait_for_timeout(300); pg4.screenshot(path=OUT + 'admin-absences.png')
     print('erreurs :', errs); b.close()

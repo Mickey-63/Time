@@ -69,7 +69,7 @@
       r.events.forEach(function (e) { next[e.id] = e; });
       Object.keys(S.dirty).forEach(function (id) { if (S.evs[id]) next[id] = S.evs[id]; });
       S.evs = next; cache = null;
-      S.me = r.me; S.socs = r.socs; S.mes = r.mes; S.epingles = r.epingles || []; S.defaut = r.defaut || null; S.regles = r.regles;
+      S.me = r.me; S.socs = r.socs; S.mes = r.mes; S.epingles = r.epingles || []; S.defaut = r.defaut || null; S.regles = r.regles; S.absences = r.absences || [];
       S.dossiers = {}; r.dossiers.forEach(function (d) { S.dossiers[d.id] = d; });
     }, function (err) {
       if (err.status === 401) { S.token = ''; S.me = null; loginErr = err.message; loadPeople(); }
@@ -286,6 +286,11 @@
     var today = E.dayKey(t), date = S.jour || today, ps = E.pieces(list, t).filter(function (x) { return x.date === date; }), tot = E.totals(ps);
     var h = '<div class="datenav"><button data-act="jour" data-n="-1" aria-label="Jour précédent">‹</button><b>' + E.frDate(date) + (date === today ? ' · aujourd’hui' : '') + '</b><button data-act="jour" data-n="1" aria-label="Jour suivant"' + (date >= today ? ' disabled' : '') + '>›</button></div>' +
       '<div class="kpis"><div class="kpi"><b>' + E.dur(tot.travail) + '</b><span>Travail</span></div><div class="kpi"><b>' + E.dur(tot.pause) + '</b><span>Pauses</span></div><div class="kpi"><b>' + E.dur(tot.cafe) + '</b><span>Avant travail</span></div></div>';
+    // Absence saisie par le bureau pour ce jour (la sienne avant un jour férié commun).
+    var ab = null;
+    (S.absences || []).forEach(function (a) { if (a.du <= date && date <= a.au && (!ab || a.pid !== '*')) ab = a; });
+    if (ab) h += '<div class="note">Absence enregistrée par le bureau : <b>' + esc(E.ABS[ab.type] || ab.type) + '</b>' + (ab.demi ? ', demi-journée' : '') +
+      (ab.du !== ab.au ? ', du ' + E.frDate(ab.du) + ' au ' + E.frDate(ab.au) : '') + '. Une erreur ? Signale-la au bureau.</div>';
     alertes(date, t).forEach(function (a) { h += '<div class="note warn">' + esc(a) + '</div>'; });
     h += '<div class="card"><div class="sec"><span>Relevé du jour</span><span>heures réelles</span></div>' + timeline(date, t) + '</div>';
     var parD = Object.keys(tot.parDossier);

@@ -35,4 +35,9 @@ h = []
 for day, c in ((19, 'GRAND-RUE 5 - GLAND'), (20, 'GRAND-RUE 5 - GLAND'), (23, 'CHEMIN DU MOULIN 4 - PRANGINS')):
     h += [(ts(8, 0, day), 'travail', 'Travail courant', 'bureau'), (ts(9, 0, day), 'travail', c, 'mission'), (ts(12, 0, day), 'pause', 'midi', 'Midi'), (ts(13, 0, day), 'travail', c, 'mission'), (ts(16, 30, day), 'fin')]
 push(l, h, 'l')
+# Absences saisies par le bureau (aucune ne touche la journée des captures)
+ids = {e['prenom']: e['id'] for e in api('cfg', {'token': tok})['employes']}
+for pid, typ, du, au, note in ((ids['Zoé'], 'vacances', '2026-12-07', '2026-12-11', ''), (ids['Anna'], 'vacances', '2026-12-21', '2026-12-31', 'Fiche du 20.11.'), ('*', 'ferie', '2026-12-25', '2026-12-25', 'Noël'),
+                               (ids['Marc'], 'maladie', '2026-11-16', '2026-11-17', ''), (ids['Luc'], 'accident', '2026-10-05', '2026-10-05', '')):
+    api('abs_save', {'token': tok, 'abs': {'pid': pid, 'type': typ, 'du': du, 'au': au, 'demi': typ == 'accident', 'note': note}})
 print([(p['prenom'], p['code'], p['dossier']) for p in api('etat')['people']])

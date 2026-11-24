@@ -1,6 +1,7 @@
-"""Produit les deux modes d'emploi PDF publiés dans time/ à partir de detail.html et nuls.html.
-Usage : python3 .manuels/build.py   (Chrome et Playwright requis). Les captures d'écran sont dans .manuels/img/."""
-import pathlib
+"""Produit les deux modes d'emploi PDF publiés dans time/ à partir de detail.html et nuls.html, puis leurs pages en images
+dans time/aide/ (lues par aide.html). Usage : python3 .manuels/build.py   (Chrome, Playwright et pdftoppm requis).
+Les captures d'écran sont dans .manuels/img/. Reporter ensuite le nombre de pages et la version dans MANUELS (commun.js)."""
+import pathlib, subprocess
 from playwright.sync_api import sync_playwright
 ICI = pathlib.Path(__file__).resolve().parent
 SORTIE = ICI.parent / 'time'
@@ -15,3 +16,10 @@ with sync_playwright() as p:
                display_header_footer=bool(pied), header_template='<span></span>', footer_template=PIED % pied if pied else '<span></span>')
         print(dst, 'écrit')
     b.close()
+AIDE = SORTIE / 'aide'; AIDE.mkdir(exist_ok=True)
+for cle, pdf in (('detail', 'giotimepro-mode-emploi.pdf'), ('nuls', 'giotimepro-pour-les-nuls.pdf')):
+    for f in AIDE.glob(cle + '-*.jpg'): f.unlink()
+    subprocess.run(['pdftoppm', '-r', '140', '-jpeg', '-jpegopt', 'quality=84,progressive=y', str(SORTIE / pdf), str(AIDE / ('tmp-' + cle))], check=True)
+    pages = sorted(AIDE.glob('tmp-' + cle + '-*.jpg'))
+    for i, f in enumerate(pages, 1): f.rename(AIDE / ('%s-%d.jpg' % (cle, i)))
+    print(cle, ':', len(pages), 'page(s) en images')

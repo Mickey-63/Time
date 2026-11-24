@@ -6,21 +6,21 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="icon" href="chat.png?v=11">
+<link rel="icon" href="chat.png?v=12">
 <link rel="apple-touch-icon" href="icone-180.png?v=2">
 <meta name="apple-mobile-web-app-title" content="GIOTimePRO">
 <meta name="application-name" content="GIOTimePRO">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 <title>Équipe · GIOTimePRO</title>
 </head>
 <body>
 <div class="board" id="app"></div>
 <noscript>Cette page a besoin de JavaScript.</noscript>
-<script src="engine.js?v=11"></script>
-<script src="commun.js?v=11"></script>
+<script src="engine.js?v=12"></script>
+<script src="commun.js?v=12"></script>
 <script>
 /* Tableau d'équipe public : qui est disponible, sur quel dossier. Lecture seule, rafraîchi toutes les 15 secondes. */
 (function () {
@@ -45,9 +45,9 @@
     data.people.forEach(function (p) {
       var travail = p.code === 'bureau' || p.code === 'mission', oubli = travail && p.since && t - p.since > 11 * E.H;
       h += '<div class="btile st-' + p.code + '"><div class="p">' + esc(p.prenom) + '</div><div class="n">' + esc(p.nom) + '</div>' +
-        '<div class="l">' + ic(p.code) + window.LIB[p.code] + '</div>' +
+        '<div class="l">' + ic(p.code) + (p.abs === 'vacances' ? 'En vacances' : p.abs === 'ferie' ? 'Jour férié' : window.LIB[p.code]) + '</div>' +
         (travail && p.dossier ? '<div class="d">' + esc(p.dossier) + '</div>' : '') +
-        '<div class="s">' + (oubli ? 'Fin de journée oubliée ? · ' : '') + depuis(p.since, t) + '</div>' +
+        '<div class="s">' + (p.abs === 'vacances' ? 'jusqu’au ' + E.frDate(p.jusqu).replace(/\.\d{4}$/, '.') : p.abs ? '' : (oubli ? 'Fin de journée oubliée ? · ' : '') + depuis(p.since, t)) + '</div>' +
         (p.long ? '<div class="lg">Pause longue</div>' : '') + '</div>';
     });
     h += '</div><footer><span>Mise à jour automatique toutes les 15 secondes. Le statut est celui du dernier pointage reçu.</span>' +

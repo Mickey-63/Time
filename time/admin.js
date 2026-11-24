@@ -65,7 +65,7 @@
       '<button class="btn full" data-act="prov-save"' + (busy ? ' disabled' : '') + '>Enregistrer</button></div></main>';
   }
   function tabsBar() {
-    var list = [['employes', 'Employés'], ['dossiers', 'Centres'], ['export', 'Export Excel'], ['reglages', 'Réglages']];
+    var list = [['employes', 'Employés'], ['dossiers', 'Centres'], ['absences', 'Absences'], ['export', 'Export'], ['reglages', 'Réglages']];
     return '<nav class="tabs" aria-label="Sections">' + list.map(function (t) { return '<button data-act="tab" data-t="' + t[0] + '" aria-current="' + (t[0] === tab) + '">' + t[1] + '</button>'; }).join('') + '</nav>';
   }
   function vEmployes() {
@@ -99,6 +99,49 @@
     });
     return h;
   }
+  /* Absences : saisies ici par le bureau, à partir de la fiche remise par l'employé. Jamais par l'employé lui-même. */
+  function jm(k) { var a = k.split('-'); return a[2] + '.' + a[1] + '.' + a[0]; }
+  function absQui(a) {
+    if (a.pid === '*') return 'Tous les employés';
+    var e = cfg.employes.filter(function (p) { return p.id === a.pid; })[0];
+    return e ? e.prenom + ' ' + e.nom : 'Employé supprimé';
+  }
+  function nj(n) { return String(n).replace('.', ',') + ' jour' + (n >= 2 ? 's' : '') + ' ouvré' + (n >= 2 ? 's' : ''); }
+  function vAbsences() {
+    var L = cfg.absences || [], an = today.slice(0, 4);
+    var h = '<button class="btn full" data-act="abs-new">Saisir une absence</button>' +
+      '<div class="mute small">Vacances, maladie, accident, jour férié : c’est le bureau qui les saisit ici, d’après la fiche remise par l’employé. L’employé ne peut pas les saisir lui-même ; il les voit dans son onglet Journée. Au tableau d’équipe, seuls « En vacances » et « Jour férié » s’affichent ; maladie et accident restent un simple « Absent ».</div>';
+    if (!L.length) return h + '<div class="note">Aucune absence saisie pour l’instant.</div>';
+    var ligne = function (a) {
+      var n = E.joursAbs(a, null, null, a.type === 'ferie' ? null : E.feriesDe(L, a.pid));
+      return '<div class="row"><div><div class="nm">' + esc(absQui(a)) + ' <span class="badge">' + esc(E.ABS[a.type] || a.type) + '</span></div><div class="mute small">' +
+        (a.du === a.au ? 'le ' + jm(a.du) : 'du ' + jm(a.du) + ' au ' + jm(a.au)) + ' · ' + (a.demi ? 'demi-journée' : nj(n)) + (a.note ? ' · ' + esc(a.note) : '') + '</div></div>' +
+        '<button class="btn ghost sm" data-act="abs-edit" data-id="' + esc(a.id) + '">Modifier</button></div>';
+    };
+    var cours = L.filter(function (a) { return a.au >= today; }).sort(function (a, b) { return a.du < b.du ? -1 : a.du > b.du ? 1 : 0; });
+    var pass = L.filter(function (a) { return a.au < today; }).sort(function (a, b) { return a.du < b.du ? 1 : a.du > b.du ? -1 : 0; });
+    if (cours.length) h += '<div class="card lst"><div class="sec"><span>En cours et à venir</span><span>' + cours.length + '</span></div>' + cours.map(ligne).join('') + '</div>';
+    // Décompte de l'année : jours ouvrés par employé et par type, jours fériés déduits des vacances.
+    var f = { from: an + '-01-01', to: an + '-12-31' }, par = {};
+    E.absLignes(L, cfg.employes, f).forEach(function (x) {
+      if (x.a.type === 'ferie') return;
+      var o = par[x.p.id] || (par[x.p.id] = { p: x.p, t: {} });
+      o.t[x.a.type] = (o.t[x.a.type] || 0) + x.jours;
+    });
+    var ids = Object.keys(par).sort(function (a, b) { return byName(par[a].p, par[b].p); });
+    if (ids.length) {
+      h += '<div class="card lst"><div class="sec"><span>Décompte ' + an + '</span><span>jours ouvrés</span></div>';
+      ids.forEach(function (id) {
+        var o = par[id];
+        h += '<div class="row"><div><div class="nm">' + esc(o.p.prenom + ' ' + o.p.nom) + '</div><div class="mute small">' +
+          ['vacances', 'maladie', 'accident', 'autre'].filter(function (k) { return o.t[k]; }).map(function (k) { return E.ABS[k] + ' ' + String(o.t[k]).replace('.', ','); }).join(' · ') + '</div></div></div>';
+      });
+      h += '</div>';
+    }
+    if (pass.length) h += '<div class="card lst"><div class="sec"><span>Passées</span><span>' + pass.length + '</span></div>' + pass.slice(0, 40).map(ligne).join('') + '</div>' +
+      (pass.length > 40 ? '<div class="mute small">Les 40 plus récentes. Les autres sortent dans l’export.</div>' : '');
+    return h;
+  }
   function vExport() {
     var opt = function (v, l, cur) { return '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + esc(l) + '</option>'; };
     return '<div class="card"><div class="btns"><button class="btn ghost sm" data-act="ex-p" data-p="mois">Ce mois</button><button class="btn ghost sm" data-act="ex-p" data-p="prec">Mois dernier</button><button class="btn ghost sm" data-act="ex-p" data-p="an">Cette année</button></div>' +
@@ -107,7 +150,7 @@
       '<label class="f" for="ex-soc">Société<select id="ex-soc" data-ex="soc">' + opt('', 'Toutes', ex.soc) + Object.keys(cfg.socs).map(function (s) { return opt(s, cfg.socs[s].nom, ex.soc); }).join('') + '</select></label>' +
       (exErr ? '<div class="err" role="alert">' + esc(exErr) + '</div>' : '') + (exMsg ? '<div class="ok-msg" role="status">' + esc(exMsg) + '</div>' : '') +
       '<button class="btn full" data-act="export"' + (busy ? ' disabled' : '') + '>' + (busy ? 'Préparation…' : 'Télécharger le classeur .xlsx') + '</button></div>' +
-      '<div class="mute small">Quatre feuilles : Détail (chaque plage avec début, fin, centre, code analytique, code d’intervention et note), Par centre, Par collaborateur, et Centres (la liste complète des centres et bâtiments, à garder comme sauvegarde). Dates et durées numériques, cumuls au-delà de 24 h, minuit ventilé sur deux dates. Une plage encore ouverte est marquée « Provisoire », une heure corrigée « Oui » dans la colonne Corrigé.</div>';
+      '<div class="mute small">Cinq feuilles : Détail (chaque plage avec début, fin, centre, code analytique, code d’intervention et note), Par centre, Par collaborateur, Absences (vacances, maladie, accident, jours fériés de la période, avec les jours ouvrés et les totaux par personne) et Centres (la liste complète des centres et bâtiments, à garder comme sauvegarde). Dates et durées numériques, cumuls au-delà de 24 h, minuit ventilé sur deux dates. Une plage encore ouverte est marquée « Provisoire », une heure corrigée « Oui » dans la colonne Corrigé.</div>';
   }
   function vReglages() {
     var R = cfg.regles, base = location.href.replace(/[^/]*([?#].*)?$/, '');
@@ -161,6 +204,17 @@
         chk('data-b="commun"', x.commun || x.defaut, 'Centre commun : affiché d’office sur l’écran de tous les employés') +
         chk('data-b="defaut"', x.defaut, 'Centre par défaut : la journée commence dessus (un seul par société)') +
         chk('data-b="actif"', x.actif, 'Actif : proposé au pointage (décocher pour archiver)');
+    } else if (sheet.type === 'abs') {
+      var o2 = function (v, l, cur) { return '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + esc(l) + '</option>'; };
+      h += '<h2>' + (x.id ? 'Modifier l’absence' : 'Saisir une absence') + '</h2>' +
+        '<label class="f" for="a-pid">Employé<select id="a-pid" data-f="pid">' + o2('', 'Choisir…', x.pid) +
+        cfg.employes.filter(function (p) { return p.actif || p.id === x.pid; }).sort(byName).map(function (p) { return o2(p.id, p.prenom + ' ' + p.nom, x.pid); }).join('') +
+        o2('*', 'Tous les employés (jour férié, fermeture)', x.pid) + '</select></label>' +
+        '<label class="f" for="a-type">Type<select id="a-type" data-f="type">' + Object.keys(E.ABS).map(function (k) { return o2(k, E.ABS[k], x.type); }).join('') + '</select></label>' +
+        '<div class="two"><label class="f" for="a-du">Du<input type="date" id="a-du" data-f="du" value="' + esc(x.du) + '"></label><label class="f" for="a-au">Au (inclus)<input type="date" id="a-au" data-f="au" value="' + esc(x.au) + '"></label></div>' +
+        chk('data-b="demi"', x.demi, 'Demi-journée (absence d’un seul jour)') +
+        '<label class="f" for="a-note">Remarque (facultative)<input id="a-note" data-f="note" maxlength="80" value="' + esc(x.note) + '"></label>' +
+        '<div class="mute small">Pas de diagnostic ni de détail médical ici : le type suffit. Le certificat reste dans le dossier du personnel.</div>';
     } else if (sheet.type === 'imp') {
       h += '<h2>Importer une liste de centres</h2>' +
         '<label class="f" for="i-soc">Société<select id="i-soc" data-f="soc">' + Object.keys(cfg.socs).map(function (s) { return '<option value="' + s + '"' + (s === x.soc ? ' selected' : '') + '>' + esc(cfg.socs[s].nom) + '</option>'; }).join('') + '</select></label>' +
@@ -178,7 +232,7 @@
     var m = document.getElementById('main'), sc = m ? m.scrollTop : 0, sh = root.querySelector('.sheet'), ssc = sh ? sh.scrollTop : 0;
     if (!cfg) { root.innerHTML = vGate(); return; }
     if (prov) { root.innerHTML = vProv(); return; }
-    var body = tab === 'dossiers' ? vDossiers() : tab === 'export' ? vExport() : tab === 'reglages' ? vReglages() : vEmployes();
+    var body = tab === 'dossiers' ? vDossiers() : tab === 'absences' ? vAbsences() : tab === 'export' ? vExport() : tab === 'reglages' ? vReglages() : vEmployes();
     var actifs = cfg.employes.filter(function (e) { return e.actif; }).length, dAct = cfg.dossiers.filter(function (d) { return d.actif; }).length;
     root.innerHTML = head(actifs + ' employé' + (actifs > 1 ? 's' : '') + ' actif' + (actifs > 1 ? 's' : '') + ', ' + dAct + ' centre' + (dAct > 1 ? 's' : '') + ' actif' + (dAct > 1 ? 's' : '')) +
       '<main id="main">' + (flash ? '<div class="ok-msg" role="status">' + esc(flash) + '</div>' : '') + body + '</main>' + tabsBar() + vSheet();
@@ -261,7 +315,7 @@
     'emp-del': function () {
       if (!sheet.sure) { sheet.sure = true; sheet.err = 'Appuyez une seconde fois sur Supprimer pour confirmer.'; return; }
       var id = sheet.x.id;
-      run(call('emp_del', { id: id }), 'Employé supprimé.').then(function () { cfg.employes = cfg.employes.filter(function (p) { return p.id !== id; }); sheet = null; }, function (e) { if (sheet) { sheet.err = msgOf(e); sheet.sure = false; } }).then(render);
+      run(call('emp_del', { id: id }), 'Employé supprimé.').then(function () { cfg.employes = cfg.employes.filter(function (p) { return p.id !== id; }); cfg.absences = (cfg.absences || []).filter(function (a) { return a.pid !== id; }); sheet = null; }, function (e) { if (sheet) { sheet.err = msgOf(e); sheet.sure = false; } }).then(render);
       return false;
     },
     // Ouvre la page de pointage comme si l'employé était connecté sur cet appareil.
@@ -329,6 +383,26 @@
       }, function (e) { if (sheet) { sheet.err = msgOf(e); sheet.sure = false; } }).then(render);
       return false;
     },
+    'abs-new': function () { sheet = { type: 'abs', x: { id: '', pid: '', type: 'vacances', du: today, au: today, demi: false, note: '' } }; },
+    'abs-edit': function (ds) {
+      var a = (cfg.absences || []).filter(function (p) { return p.id === ds.id; })[0]; if (!a) return;
+      sheet = { type: 'abs', x: { id: a.id, pid: a.pid, type: a.type, du: a.du, au: a.au, demi: !!a.demi, note: a.note || '' } };
+    },
+    'abs-save': function () {
+      var x = sheet.x; sheet.err = '';
+      if (!x.pid) { sheet.err = 'Choisissez l’employé.'; return; }
+      if (!x.du) { sheet.err = 'Indiquez la date de début.'; return; }
+      if (!x.au) x.au = x.du;
+      if (x.au < x.du) { sheet.err = 'La date de fin précède la date de début.'; return; }
+      if (x.demi && x.du !== x.au) { sheet.err = 'Une demi-journée ne peut porter que sur un seul jour.'; return; }
+      run(call('abs_save', { abs: x }), 'Absence enregistrée.').then(function (r) { cfg.absences = r.absences; sheet = null; }, function (e) { if (sheet) sheet.err = msgOf(e); }).then(render);
+      return false;
+    },
+    'abs-del': function () {
+      if (!sheet.sure) { sheet.sure = true; sheet.err = 'Appuyez une seconde fois sur Supprimer pour confirmer.'; return; }
+      run(call('abs_del', { id: sheet.x.id }), 'Absence supprimée.').then(function (r) { cfg.absences = r.absences; sheet = null; }, function (e) { if (sheet) { sheet.err = msgOf(e); sheet.sure = false; } }).then(render);
+      return false;
+    },
     'ex-p': function (ds) {
       var t = E.dayKey(Date.now()), y = +t.slice(0, 4), mo = +t.slice(5, 7);
       if (ds.p === 'mois') { ex.from = t.slice(0, 8) + '01'; ex.to = t; }
@@ -342,11 +416,11 @@
       run(call('export', { from: ex.from })).then(function (r) {
         var ds = {}; r.dossiers.forEach(function (d) { ds[d.id] = d; });
         var people = r.employes.slice().sort(byName), now = Date.now();
-        var wb = E.workbook({ people: people, dossiers: ds, socs: r.socs, evs: function (pid) { return r.events[pid] || []; } }, { from: ex.from, to: ex.to, pid: ex.pid, soc: ex.soc }, now);
-        if (!wb.totals.lignes) { exErr = 'Aucun pointage sur cette période avec ces filtres. Pour la seule liste des centres : onglet Centres, « Exporter la liste ».'; return; }
+        var wb = E.workbook({ people: people, dossiers: ds, socs: r.socs, evs: function (pid) { return r.events[pid] || []; }, absences: r.absences || [] }, { from: ex.from, to: ex.to, pid: ex.pid, soc: ex.soc }, now);
+        if (!wb.totals.lignes && !wb.totals.absences) { exErr = 'Aucun pointage ni absence sur cette période avec ces filtres. Pour la seule liste des centres : onglet Centres, « Exporter la liste ».'; return; }
         var name = 'Heures_' + ex.from + '_au_' + ex.to + '.xlsx';
         download(name, window.XlsxLite.build(wb.sheets));
-        exMsg = name + ' : ' + wb.totals.lignes + ' lignes, ' + E.dur(wb.totals.parCollab) + ' de travail, ' + E.dur(wb.totals.pauses) + ' de pauses.';
+        exMsg = name + ' : ' + wb.totals.lignes + ' lignes, ' + E.dur(wb.totals.parCollab) + ' de travail, ' + E.dur(wb.totals.pauses) + ' de pauses' + (wb.totals.absences ? ', ' + wb.totals.absences + ' absence' + (wb.totals.absences > 1 ? 's' : '') : '') + '.';
       }, function (e) { exErr = msgOf(e); }).then(render);
       return false;
     },
@@ -372,6 +446,8 @@
     if (fn(el.dataset, el, ev) === false) return;
     render();
   });
+  // Dès qu'on reprend la saisie, le message d'erreur de la fiche n'a plus lieu d'être.
+  function errOff() { if (!sheet || !sheet.err || sheet.sure) return; sheet.err = ''; var e = root.querySelector('.sheet .err'); if (e) e.remove(); }
   root.addEventListener('input', function (ev) {
     var t = ev.target;
     if (sheet && t.id === 'e-q') {
@@ -379,14 +455,14 @@
       Array.prototype.forEach.call(root.querySelectorAll('.checks .chk[data-name]'), function (el) { el.hidden = !!q && el.getAttribute('data-name').indexOf(q) < 0; });
       return;
     }
-    if (sheet && t.hasAttribute('data-f') && t.tagName !== 'SELECT') sheet.x[t.getAttribute('data-f')] = t.value;
+    if (sheet && t.hasAttribute('data-f') && t.tagName !== 'SELECT') { sheet.x[t.getAttribute('data-f')] = t.value; errOff(); }
   });
   root.addEventListener('change', function (ev) {
     var t = ev.target;
     if (t.hasAttribute('data-ex')) { ex[t.getAttribute('data-ex')] = t.value; exMsg = ''; exErr = ''; return; }
     if (!sheet) return;
     var x = sheet.x;
-    if (t.hasAttribute('data-f')) { x[t.getAttribute('data-f')] = t.value; return; }
+    if (t.hasAttribute('data-f')) { x[t.getAttribute('data-f')] = t.value; errOff(); return; }
     if (t.hasAttribute('data-b')) x[t.getAttribute('data-b')] = t.checked;
     else if (t.hasAttribute('data-soc')) { var s = t.getAttribute('data-soc'), i = x.socs.indexOf(s); if (t.checked && i < 0) x.socs.push(s); if (!t.checked && i >= 0) x.socs.splice(i, 1); }
     else if (t.hasAttribute('data-dos')) { var d = t.getAttribute('data-dos'), k = x.dossiers.indexOf(d); if (t.checked && k < 0) x.dossiers.push(d); if (!t.checked && k >= 0) x.dossiers.splice(k, 1);

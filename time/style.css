@@ -99,7 +99,7 @@ main { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14
 .cmd button.main { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-size: 16px; }
 .cmd button.wide { grid-column: span 2; }
 .tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
-.tabs button { min-height: 52px; text-align: center; font: 600 13.5px/1 var(--f-body); color: var(--mute); position: relative; border-top: 3px solid transparent; }
+.tabs button { min-height: 52px; text-align: center; padding: 0 2px; font: 600 12.5px/1 var(--f-body); color: var(--mute); position: relative; border-top: 3px solid transparent; }
 .tabs button[aria-current="true"] { color: var(--ink); border-top-color: var(--ink); }
 .badge { display: inline-block; min-width: 18px; padding: 2px 5px; border-radius: 9px; background: var(--alert); color: #fff; font-size: 11px; font-weight: 700; margin-left: 4px; vertical-align: 1px; }
 

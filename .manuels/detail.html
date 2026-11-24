@@ -10,7 +10,7 @@
   <div>
     <h1>GIOTimePRO<br><span class="rouge">Mode d’emploi</span></h1>
     <div class="sub">Le pointage du temps de travail par centre analytique, sur le téléphone.</div>
-    <div class="ver" style="margin-top:4pt">Version 5 du 24 novembre 2026 · GIOT Immobilier SA · Le résumé en une page s’appelle « GIOTimePRO pour les nuls ».</div>
+    <div class="ver" style="margin-top:4pt">Version 6 du 24 novembre 2026 · GIOT Immobilier SA · Le résumé en une page s’appelle « GIOTimePRO pour les nuls ».</div>
   </div>
   <div class="logo2"><img src="img/logo-giotimepro.png" alt="GIOTimePRO"></div>
 </div>
@@ -36,7 +36,7 @@
 <p><b>Raccourci sur l’écran d’accueil (iPhone) :</b> dans Safari, touche le bouton Partager, puis « Sur l’écran d’accueil ». GIOTimePRO s’ouvre alors comme une application, avec l’icône du chat.</p>
 <p><b>Changer ton code PIN :</b> touche ton nom en haut à gauche, puis « Changer mon code PIN ». Tape le code actuel, puis le nouveau deux fois (4 à 8 chiffres).</p>
 <p><b>Six codes PIN faux de suite</b> bloquent la connexion pendant 15 minutes. Si tu as oublié ton PIN, la direction t’en donne un nouveau.</p>
-<p>Sur cette même page, deux liens ouvrent les modes d’emploi : celui-ci, et le résumé « GIOTimePRO pour les nuls ».</p>
+<p>Sur cette même page, deux liens ouvrent les modes d’emploi : celui-ci, et le résumé « GIOTimePRO pour les nuls ». Ils s’affichent dans une page de lecture : le bouton <span class="btn c">Retour au pointage</span> reste visible en haut, et « Enregistrer ou imprimer le PDF » donne le fichier.</p>
 <div class="clear"></div>
 
 <h2>3. L’écran de pointage</h2>
@@ -122,6 +122,7 @@
   <li>les éventuels signalements de pauses (chapitre 7).</li>
 </ul>
 <p>Les flèches en haut permettent de revenir sur les jours précédents. Les <b>45 derniers jours</b> restent consultables et corrigeables.</p>
+<p><b>Absences :</b> vacances, maladie, accident et jours fériés ne se saisissent pas dans le téléphone. Tu remets ta fiche au bureau, qui les enregistre. Le jour concerné, l’onglet Journée affiche « Absence enregistrée par le bureau ». Une erreur ? Signale-la au bureau.</p>
 <h3>Corriger une heure</h3>
 <ol>
   <li>Dans le relevé, touche <span class="btn c">Corriger</span> sur la ligne concernée.</li>
@@ -155,7 +156,7 @@
 
 <h2>9. Le tableau d’équipe</h2>
 <figure class="fig w"><div class="shot"><img src="img/equipe.png" alt=""></div><figcaption>Le tableau d’équipe, prévu pour rester affiché sur un écran</figcaption></figure>
-<p>La page <b>www.le-top.ch/time/etat.html</b> montre en un coup d’œil qui est au bureau, en déplacement, en pause ou absent, et sur quel centre. Elle est en lecture seule, se met à jour toutes les 15 secondes et passe en plein écran d’un bouton. Elle n’affiche ni la durée ni le motif des pauses. Quand une pause ou un midi dépasse la durée fixée par la direction, la tuile porte la mention « Pause longue ».</p>
+<p>La page <b>www.le-top.ch/time/etat.html</b> montre en un coup d’œil qui est au bureau, en déplacement, en pause ou absent, et sur quel centre. Elle est en lecture seule, se met à jour toutes les 15 secondes et passe en plein écran d’un bouton. Elle n’affiche ni la durée ni le motif des pauses. Quand une pause ou un midi dépasse la durée fixée par la direction, la tuile porte la mention « Pause longue ». Une personne en vacances est affichée « En vacances » avec la date de retour, un jour férié « Jour férié ». Une maladie ou un accident n’y figure jamais : la tuile indique seulement « Absent ».</p>
 <p>On y accède depuis la page de connexion (« Voir le tableau d’équipe ») ou depuis le menu de son nom.</p>
 
 <h2>10. L’administration</h2>
@@ -193,13 +194,29 @@
 </div>
 
 <div class="sec">
-<h3>Onglet Export Excel</h3>
+<h3>Onglet Absences</h3>
+<figure class="fig"><div class="shot"><img src="img/d-absences.png" alt=""></div><figcaption>Les absences, saisies par le bureau</figcaption></figure>
+<p>Les absences sont saisies <b>par le bureau uniquement</b>, d’après la fiche remise par l’employé. Touchez <span class="btn">Saisir une absence</span>, puis indiquez :</p>
+<ul>
+  <li>l’<b>employé</b>, ou « Tous les employés » pour un jour férié ou une fermeture ;</li>
+  <li>le <b>type</b> : Vacances, Maladie, Accident, Jour férié ou Autre ;</li>
+  <li>les dates <b>du</b> et <b>au</b> (inclus), ou la case <b>Demi-journée</b> pour une absence d’un seul jour ;</li>
+  <li>une <b>remarque</b> facultative. N’y mettez aucun détail médical : le type suffit, le certificat reste au dossier du personnel.</li>
+</ul>
+<p>L’onglet liste les absences en cours et à venir, les absences passées, et le <b>décompte de l’année</b> : les jours ouvrés (lundi à vendredi) de chaque employé, par type. Un jour férié qui tombe pendant des vacances n’est pas compté comme jour de vacances. « Modifier » corrige ou supprime une absence.</p>
+<p>L’employé voit ses absences dans son onglet Journée, sans pouvoir les modifier.</p>
+<div class="clear"></div>
+</div>
+
+<div class="sec">
+<h3>Onglet Export</h3>
 <figure class="fig"><div class="shot"><img src="img/d-export.png" alt=""></div><figcaption>L’export des heures</figcaption></figure>
-<p>Choisissez la période (ce mois, le mois dernier, cette année ou des dates libres), éventuellement un collaborateur et une société, puis téléchargez le classeur. Il contient quatre feuilles :</p>
+<p>Choisissez la période (ce mois, le mois dernier, cette année ou des dates libres), éventuellement un collaborateur et une société, puis téléchargez le classeur. Il contient cinq feuilles :</p>
 <ul>
   <li><b>Détail</b> : chaque plage avec la date, le collaborateur, le centre, le code analytique, le lieu, le début, la fin et la durée, puis le code d’intervention et la note de fin de travail ;</li>
   <li><b>Par centre</b> : le total des heures par centre et par collaborateur, pour le report dans Astuces ;</li>
   <li><b>Par collaborateur</b> : le total de chacun ;</li>
+  <li><b>Absences</b> : les absences de la période, avec les jours ouvrés et les totaux par personne et par type ;</li>
   <li><b>Centres</b> : la liste complète des centres et bâtiments (nom, code analytique, société, type, par défaut, actif).</li>
 </ul>
 <p>Une plage encore en cours est marquée « Provisoire ». Une heure corrigée porte « Oui » dans la colonne Corrigé.</p>
@@ -217,6 +234,7 @@
 <div class="sec"><h3>J’ai touché le mauvais centre ou le mauvais bâtiment.</h3><p>Touche tout de suite le bon. Si l’erreur a duré, corrige l’heure de début du bon centre dans l’onglet Journée.</p></div>
 <div class="sec"><h3>Je travaille pour plusieurs immeubles à la fois.</h3><p>Utilise le centre commun « Immobilier ». Pour plusieurs chantiers à la fois, « Chantiers ».</p></div>
 <div class="sec"><h3>Je n’ai pas de réseau sur le chantier.</h3><p>Pointe normalement. Tout est gardé dans le téléphone et transmis au retour du réseau.</p></div>
+<div class="sec"><h3>Comment annoncer des vacances, une maladie, un accident ?</h3><p>Comme avant : avec la fiche remise au bureau. Le bureau enregistre l’absence dans GIOTimePRO ; rien à saisir dans le téléphone.</p></div>
 <div class="sec"><h3>J’ai changé de téléphone.</h3><p>Ouvre la page sur le nouveau téléphone et connecte-toi avec ton nom et ton PIN. Tes pointages sont sur le serveur.</p></div>
 <div class="sec"><h3>L’adresse dont j’ai besoin n’est pas dans Bâtiments.</h3><p>Demande à la direction de la créer. Elle apparaît toute seule dans la liste, sans te reconnecter.</p></div>
 <div class="sec"><h3>Faut-il pointer chaque téléphone ou chaque e-mail ?</h3><p>Non. En dessous de 15 minutes, tout reste en Travail courant.</p></div>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="chat.png?v=12">
+<link rel="apple-touch-icon" href="icone-180.png?v=2">
+<meta name="apple-mobile-web-app-title" content="GIOTimePRO">
+<link rel="manifest" href="manifest.json?v=2">
+<link rel="stylesheet" href="style.css?v=12">
+<title>Mode d’emploi · GIOTimePRO</title>
+<style>
+  /* Lecture des modes d'emploi dans l'application : les pages du PDF en images, avec un retour toujours visible.
+     Sur iPhone, l'application installée sur l'écran d'accueil n'a pas de bouton « précédent » : un PDF ouvert directement y enferme l'utilisateur. */
+  html, body { height: auto; }
+  .lec { max-width: 900px; margin: 0 auto; }
+  .lec-top { position: sticky; top: 0; z-index: 5; background: var(--card); border-bottom: 1px solid var(--line); padding: calc(8px + env(safe-area-inset-top)) 12px 8px; display: flex; flex-direction: column; gap: 8px; }
+  .lec-top .l1 { display: flex; align-items: center; gap: 10px; }
+  .lec-top .btn { flex: none; }
+  .lec-top h1 { font-size: 17px; line-height: 1.15; min-width: 0; }
+  .lec-top .l2 { display: flex; gap: 8px; flex-wrap: wrap; }
+  .lec-top .l2 .btn { flex: 1 1 auto; }
+  .lec-msg { font-size: 13.5px; color: var(--mute); }
+  .lec-pages { padding: 10px 8px calc(18px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; }
+  .lec-pages img { display: block; width: 100%; height: auto; background: #fff; border: 1px solid var(--line); border-radius: 6px; }
+  .lec-bas { padding: 0 12px calc(22px + env(safe-area-inset-bottom)); }
+</style>
+</head>
+<body>
+<div class="lec" id="app"></div>
+<noscript>Cette page a besoin de JavaScript. <a href="index.html">Retour au pointage</a></noscript>
+<script src="commun.js?v=12"></script>
+<script>
+(function () {
+  'use strict';
+  var M = window.MANUELS, esc = window.esc, root = document.getElementById('app');
+  var k = (/[?&]d=([a-z]+)/.exec(location.search) || [])[1]; if (!M.docs[k]) k = 'nuls';
+  var d = M.docs[k], autre = k === 'nuls' ? 'detail' : 'nuls', pdf = d.pdf + '?v=' + M.v, fichier = null, msg = '';
+  var appli = !!navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  function render() {
+    var h = '<div class="lec-top"><div class="l1"><a class="btn" href="index.html">‹ Retour au pointage</a><h1>' + esc(d.titre) + '</h1></div>' +
+      '<div class="l2"><button class="btn ghost sm" id="pdf">Enregistrer ou imprimer le PDF</button><a class="btn ghost sm" href="aide.html?d=' + autre + '">' + esc(M.docs[autre].court) + '</a></div>' +
+      (msg ? '<div class="lec-msg" role="status">' + esc(msg) + '</div>' : '') + '</div><div class="lec-pages">';
+    for (var i = 1; i <= d.pages; i++) h += '<img src="aide/' + k + '-' + i + '.jpg?v=' + M.v + '" width="1157" height="1638" alt="' + esc(d.titre) + ', page ' + i + ' sur ' + d.pages + '"' + (i > 2 ? ' loading="lazy"' : '') + '>';
+    root.innerHTML = h + '</div><div class="lec-bas"><a class="btn full" href="index.html">‹ Retour au pointage</a></div>';
+  }
+  // Le fichier est chargé d'avance : sur iPhone, le partage doit suivre immédiatement le toucher.
+  function charger() {
+    if (!window.File || !navigator.canShare) return;
+    fetch(pdf).then(function (r) { return r.ok ? r.blob() : null; }).then(function (b) {
+      if (b) fichier = new File([b], d.pdf, { type: 'application/pdf' });
+    }).catch(function () { });
+  }
+  root.addEventListener('click', function (ev) {
+    if (ev.target.id !== 'pdf') return;
+    if (fichier && navigator.canShare({ files: [fichier] })) {
+      navigator.share({ files: [fichier], title: d.titre }).catch(function (e) {
+        if (e && e.name === 'AbortError') return;
+        msg = 'Le partage n’a pas abouti. Ouvre www.le-top.ch/time dans Safari pour récupérer le PDF.'; render();
+      });
+      return;
+    }
+    // Sans feuille de partage (ordinateur) : téléchargement classique. Dans l'application de l'écran d'accueil, on ne quitte pas la page.
+    if (appli) { msg = 'Pour enregistrer le PDF, ouvre www.le-top.ch/time dans le navigateur du téléphone.'; render(); return; }
+    var a = document.createElement('a'); a.href = pdf; a.download = d.pdf; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+  });
+  document.title = d.titre + ' · GIOTimePRO';
+  render(); charger();
+})();
+</script>
+</body>
+</html>

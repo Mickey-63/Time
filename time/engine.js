@@ -257,6 +257,62 @@
     list.forEach(function (d) { rows.push([d.nom, d.code || '', sn(d.soc), d.commun ? 'Commun' : 'Bâtiment', d.defaut ? 'Oui' : '', d.actif === false ? 'Non' : 'Oui']); });
     return { name: 'Centres', rows: rows, widths: [42, 18, 24, 12, 11, 8] };
   }
+  /* Absences saisies par le bureau. */
+  var ABS = { vacances: 'Vacances', maladie: 'Maladie', accident: 'Accident', ferie: 'Jour férié', autre: 'Autre' };
+  /* Jours ouvrés (lundi à vendredi) d'une absence, limités à la période [from, to] si elle est donnée.
+     feries : jours à ne pas compter (un jour férié pendant des vacances n'est pas un jour de vacances). Demi-journée : 0,5. */
+  function joursAbs(a, from, to, feries) {
+    var du = from && from > a.du ? from : a.du, au = to && to < a.au ? to : a.au, n = 0, k = du, g = 0;
+    while (k <= au && g++ < 800) {
+      var p = k.split('-'), j = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])).getUTCDay();
+      if (j !== 0 && j !== 6 && !(feries && feries[k])) n++;
+      k = addDays(k, 1);
+    }
+    return a.demi && a.du === a.au ? n / 2 : n;
+  }
+  /* Jours fériés applicables à une personne : absences de type « ferie », les siennes ou celles posées pour tous. */
+  function feriesDe(absences, pid) {
+    var o = {};
+    (absences || []).forEach(function (a) {
+      if (a.type !== 'ferie' || (a.pid !== pid && a.pid !== '*')) return;
+      var k = a.du, g = 0; while (k <= a.au && g++ < 800) { o[k] = true; k = addDays(k, 1); }
+    });
+    return o;
+  }
+  /* Lignes d'absence par personne sur une période : une absence posée pour tous donne une ligne par employé actif. */
+  function absLignes(absences, people, f) {
+    var out = [];
+    people.forEach(function (p) {
+      if (f.pid && f.pid !== p.id) return;
+      if (f.soc && (p.socs || []).indexOf(f.soc) < 0) return;
+      var fer = feriesDe(absences, p.id);
+      (absences || []).forEach(function (a) {
+        if (a.pid !== p.id && !(a.pid === '*' && p.actif !== false)) return;
+        if ((f.from && a.au < f.from) || (f.to && a.du > f.to)) return;
+        out.push({ p: p, a: a, jours: joursAbs(a, f.from, f.to, a.type === 'ferie' ? null : fer) });
+      });
+    });
+    return out;
+  }
+  function absSheet(absences, people, f) {
+    var rows = [['Collaborateur', 'Type', 'Du', 'Au', 'Demi-journée', 'Jours ouvrés', 'Remarque'].map(function (v) { return { v: v, s: 1 }; })];
+    var l = absLignes(absences, people, f);
+    l.sort(function (x, y) { var a = x.p.prenom + ' ' + x.p.nom, b = y.p.prenom + ' ' + y.p.nom; return a.localeCompare(b, 'fr') || (x.a.du < y.a.du ? -1 : x.a.du > y.a.du ? 1 : 0); });
+    var tot = {}, ordre = [];
+    l.forEach(function (x) {
+      var nom = x.p.prenom + ' ' + x.p.nom;
+      rows.push([nom, ABS[x.a.type] || x.a.type, { v: excelDate(x.a.du), s: 2 }, { v: excelDate(x.a.au), s: 2 }, x.a.demi ? 'Oui' : '', x.jours, x.a.note || '']);
+      var k = nom + '|' + x.a.type;
+      if (!(k in tot)) { tot[k] = { nom: nom, type: x.a.type, n: 0 }; ordre.push(k); }
+      tot[k].n += x.jours;
+    });
+    if (ordre.length) {
+      rows.push(['', '', '', '', '', '', '']);
+      rows.push([{ v: 'Totaux sur la période', s: 6 }, '', '', '', '', '', '']);
+      ordre.forEach(function (k) { rows.push([{ v: tot[k].nom, s: 6 }, { v: ABS[tot[k].type] || tot[k].type, s: 6 }, '', '', '', { v: tot[k].n, s: 6 }, '']); });
+    }
+    return { name: 'Absences', rows: rows, widths: [24, 14, 12, 12, 13, 13, 40], n: l.length };
+  }
   function workbook(m, f, now) {
     var S = { h: 1, date: 2, time: 3, dur: 4, chf: 5, b: 6, bdur: 7 };
     function hd(v) { return { v: v, s: S.h }; }
@@ -319,14 +375,16 @@
     });
     closeN();
     sc.push([{ v: 'Total général', s: S.b }, '', { v: totT / DAY, s: S.bdur }, { v: totP / DAY, s: S.bdur }]);
+    var sa = absSheet(m.absences || [], m.people, f), nAbs = sa.n; delete sa.n;
     return {
       sheets: [
         { name: 'Détail', rows: detail, widths: [12, 22, 22, 30, 16, 12, 8, 8, 11, 9, 9, 11, 9, 10, 40] },
         { name: 'Par centre', rows: sd, widths: [22, 32, 16, 22, 11] },
         { name: 'Par collaborateur', rows: sc, widths: [22, 14, 11, 11] },
+        sa,
         centresSheet(m.dossiers, m.socs)
       ],
-      totals: { detailTravail: detail.slice(1).reduce(function (a, r) { return a + (r[8] === 'Travail' ? r[9].v : 0); }, 0) * DAY, parDossier: totD, parCollab: totT, pauses: totP, lignes: detail.length - 1 }
+      totals: { detailTravail: detail.slice(1).reduce(function (a, r) { return a + (r[8] === 'Travail' ? r[9].v : 0); }, 0) * DAY, parDossier: totD, parCollab: totT, pauses: totP, lignes: detail.length - 1, absences: nAbs }
     };
   }
 
@@ -336,7 +394,8 @@
     weekKey: weekKey, hhmm: hhmm, atTime: atTime, excelSerial: excelSerial, excelDate: excelDate, dur: dur, frDate: frDate, pad: pad,
     sortEvents: sortEvents, segments: segments, splitByDay: splitByDay, pieces: pieces, statusOf: statusOf, act: act,
     totals: totals, legalCheck: legalCheck, midiCheck: midiCheck, rkey: rkey, interventions: interventions,
-    montants: montants, refRapport: refRapport, transmettre: transmettre, canMove: canMove, ctxOf: ctxOf, workbook: workbook, centresSheet: centresSheet, sessions: sessions, CODES: CODES
+    montants: montants, refRapport: refRapport, transmettre: transmettre, canMove: canMove, ctxOf: ctxOf, workbook: workbook, centresSheet: centresSheet, sessions: sessions, CODES: CODES,
+    ABS: ABS, joursAbs: joursAbs, feriesDe: feriesDe, absLignes: absLignes
   };
 })(typeof window !== 'undefined' ? window : globalThis);
 

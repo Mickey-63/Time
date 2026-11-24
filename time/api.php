@@ -207,6 +207,24 @@ function reinit(): void {
   wr('tries', $t);
 }
 
+/* ---------- absences (saisies par le bureau : vacances, maladie, accident, jour férié, autre) ---------- */
+define('ABS_TYPES', ['vacances', 'maladie', 'accident', 'ferie', 'autre']);
+function jourOk(string $d): bool {
+  return (bool) preg_match('/^(\\d{4})-(\\d{2})-(\\d{2})$/', $d, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1]);
+}
+/* Absences d'un employé : les siennes et celles posées pour tous (pid « * », jours fériés). */
+function absDe(string $pid): array {
+  $o = [];
+  foreach (rd('abs', []) as $a) if ($a['pid'] === $pid || $a['pid'] === '*') $o[] = $a;
+  return $o;
+}
+/* Absence couvrant un jour donné ; une absence personnelle passe avant un jour férié commun. */
+function absJour(array $liste, string $jour): ?array {
+  $r = null;
+  foreach ($liste as $a) if ($a['du'] <= $jour && $jour <= $a['au'] && ($r === null || $a['pid'] !== '*')) $r = $a;
+  return $r;
+}
+
 /* ---------- événements ---------- */
 function evClean(array $e, string $pid, array $dos): ?array {
   $id = (string) ($e['id'] ?? '');
@@ -273,6 +291,7 @@ switch ($a) {
     $dn = [];
     foreach ($c['dossiers'] as $d) $dn[$d['id']] = $d['nom'];
     $list = [];
+    $abs = rd('abs', []); $jour = date('Y-m-d', (int) (NOW / 1000));
     foreach ($c['employes'] as $e) {
       if (empty($e['actif'])) continue;
       $s = $et[$e['id']] ?? null;
@@ -285,6 +304,14 @@ switch ($a) {
         if ($lim > 0 && NOW - (int) $s['ts'] > $lim * 60000) $o['long'] = true;
       }
       elseif ($s && $s['t'] === 'cafe') $o['since'] = null;
+      // Absence saisie par le bureau : seuls « vacances » et « jour férié » sont affichés. Maladie, accident, autre : jamais de motif.
+      if ($o['code'] === 'absent') {
+        $mine = [];
+        foreach ($abs as $a) if ($a['pid'] === $e['id'] || $a['pid'] === '*') $mine[] = $a;
+        $a = absJour($mine, $jour);
+        if ($a && $a['type'] === 'vacances') { $o['abs'] = 'vacances'; $o['jusqu'] = $a['au']; }
+        elseif ($a && $a['type'] === 'ferie') $o['abs'] = 'ferie';
+      }
       $list[] = $o;
     }
     usort($list, function ($x, $y) { return strcasecmp($x['prenom'] . ' ' . $x['nom'], $y['prenom'] . ' ' . $y['nom']); });
@@ -350,7 +377,7 @@ switch ($a) {
     out([
       'now' => NOW,
       'me' => ['id' => $e['id'], 'prenom' => $e['prenom'], 'nom' => $e['nom'], 'socs' => $e['socs'], 'midi' => !empty($e['midi'])],
-      'socs' => $c['socs'], 'dossiers' => $dl, 'mes' => mesDossiers($e, $c), 'epingles' => epingles($e, $c), 'defaut' => defautDe($e, $c), 'regles' => $c['regles'], 'events' => $recent,
+      'socs' => $c['socs'], 'dossiers' => $dl, 'mes' => mesDossiers($e, $c), 'epingles' => epingles($e, $c), 'defaut' => defautDe($e, $c), 'regles' => $c['regles'], 'absences' => array_values(array_filter(absDe($pid), function ($a) { return $a['au'] >= date('Y-m-d', (int) (NOW / 1000) - 60 * 86400); })), 'events' => $recent,
     ]);
   }
 
@@ -451,7 +478,7 @@ switch ($a) {
   case 'cfg': {
     needAdmin($in);
     $c = cfg();
-    out(['socs' => $c['socs'], 'employes' => array_map('empAdmin', $c['employes']), 'dossiers' => $c['dossiers'], 'regles' => $c['regles']]);
+    out(['socs' => $c['socs'], 'employes' => array_map('empAdmin', $c['employes']), 'dossiers' => $c['dossiers'], 'regles' => $c['regles'], 'absences' => rd('abs', [])]);
   }
 
   case 'emp_save': {
@@ -492,6 +519,42 @@ switch ($a) {
     out(['emp' => empAdmin($e)]);
   }
 
+  case 'abs_save': {
+    needAdmin($in);
+    lock();
+    $c = cfg();
+    $x = $in['abs'] ?? null;
+    if (!is_array($x)) fail('Requête invalide.');
+    $pid = (string) ($x['pid'] ?? '');
+    if ($pid !== '*' && empIndex($c, $pid) < 0) fail('Choisissez l’employé.');
+    $type = (string) ($x['type'] ?? '');
+    if (!in_array($type, ABS_TYPES, true)) fail('Choisissez le type d’absence.');
+    $du = (string) ($x['du'] ?? ''); $au = (string) ($x['au'] ?? '');
+    if ($au === '') $au = $du;
+    if (!jourOk($du) || !jourOk($au)) fail('Vérifiez les dates.');
+    if ($au < $du) fail('La date de fin précède la date de début.');
+    if ((strtotime($au) - strtotime($du)) / 86400 > 400) fail('Période trop longue : 400 jours au maximum.');
+    $l = rd('abs', []);
+    $id = (string) ($x['id'] ?? ''); $i = -1;
+    foreach ($l as $k => $a) if ($a['id'] === $id) $i = $k;
+    if ($id !== '' && $i < 0) fail('Absence introuvable.', 404);
+    $a = ['id' => $i >= 0 ? $id : newId('a'), 'pid' => $pid, 'type' => $type, 'du' => $du, 'au' => $au, 'demi' => !empty($x['demi']) && $du === $au, 'note' => cut((string) ($x['note'] ?? ''), 80)];
+    if ($i >= 0) $l[$i] = $a; else $l[] = $a;
+    wr('abs', $l);
+    out(['absences' => $l]);
+  }
+
+  case 'abs_del': {
+    needAdmin($in);
+    lock();
+    $l = rd('abs', []);
+    $id = (string) ($in['id'] ?? ''); $n = count($l);
+    $l = array_values(array_filter($l, function ($a) use ($id) { return $a['id'] !== $id; }));
+    if (count($l) === $n) fail('Absence introuvable.', 404);
+    wr('abs', $l);
+    out(['absences' => $l]);
+  }
+
   case 'emp_del': {
     needAdmin($in);
     lock();
@@ -503,6 +566,9 @@ switch ($a) {
     array_splice($c['employes'], $i, 1);
     wr('cfg', $c);
     sessDrop('e:' . $id);
+    $ab = rd('abs', []);
+    $ab2 = array_values(array_filter($ab, function ($a) use ($id) { return $a['pid'] !== $id; }));
+    if (count($ab2) !== count($ab)) wr('abs', $ab2);
     $et = rd('etat', []);
     unset($et[$id]);
     wr('etat', $et);
@@ -666,7 +732,7 @@ switch ($a) {
       foreach (rd('ev_' . $e['id'], []) as $x) if ($x['ts'] >= $min) $l[] = $x;
       $evs[$e['id']] = $l;
     }
-    out(['now' => NOW, 'socs' => $c['socs'], 'employes' => array_map('empAdmin', $c['employes']), 'dossiers' => $c['dossiers'], 'events' => (object) $evs]);
+    out(['now' => NOW, 'socs' => $c['socs'], 'employes' => array_map('empAdmin', $c['employes']), 'dossiers' => $c['dossiers'], 'events' => (object) $evs, 'absences' => rd('abs', [])]);
   }
 
   default:
