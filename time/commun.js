@@ -25,15 +25,16 @@
 G.NOM = 'GIOTimePRO';
   G.LOGO = '<span class="logo"><span class="mq" role="img" aria-label="GIOTimePRO"></span>' +
     '<a class="chat" href="admin.html" aria-label="Administration"><img src="chat.png?v=12" alt="" width="76" height="82"></a></span>';
-  // Modes d'emploi : deux PDF tenus à jour dans le dépôt (sources dans .manuels/). build.py écrit aussi leurs pages en images dans aide/ :
+  // Modes d'emploi et règles du travail : trois PDF tenus à jour dans le dépôt (sources dans .manuels/). build.py écrit aussi leurs pages en images dans aide/ :
   // aide.html les affiche avec un bouton de retour, parce qu'un PDF ouvert directement enferme l'utilisateur dans l'application
   // installée sur l'écran d'accueil de l'iPhone (pas de bouton « précédent »). À chaque nouvelle version : changer v et le nombre de pages.
-  G.MANUELS = { v: '2026-11-24f', docs: {
+  G.MANUELS = { v: '2026-11-25d', docs: {
     nuls: { titre: 'GIOTimePRO pour les nuls', court: 'Pour les nuls', pdf: 'giotimepro-pour-les-nuls.pdf', pages: 1 },
-    detail: { titre: 'Mode d’emploi détaillé', court: 'Mode d’emploi détaillé', pdf: 'giotimepro-mode-emploi.pdf', pages: 8 }
+    detail: { titre: 'Mode d’emploi détaillé', court: 'Mode d’emploi détaillé', pdf: 'giotimepro-mode-emploi.pdf', pages: 10 },
+    regles: { titre: 'Règles du travail en Suisse', court: 'Règles du travail', pdf: 'giotimepro-regles-travail.pdf', pages: 3 }
   } };
   G.aide = function (cls) {
-    return '<a class="' + cls + '" href="aide.html?d=nuls">GIOTimePRO pour les nuls</a><a class="' + cls + '" href="aide.html?d=detail">Mode d’emploi détaillé</a>';
+    return Object.keys(G.MANUELS.docs).map(function (k) { return '<a class="' + cls + '" href="aide.html?d=' + k + '">' + G.MANUELS.docs[k].titre + '</a>'; }).join('');
   };
   G.LIB = { bureau: 'Au bureau', mission: 'En déplacement', pause: 'En pause', absent: 'Absent' };
 })(window);

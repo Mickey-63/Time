@@ -57,8 +57,17 @@
     });
   }
   // Un intervalle = de l'événement jusqu'au suivant. « fin » n'ouvre rien.
+  /* Pointages retenus. Un pointage remplacé par un autre moins de 20 secondes plus tard n'est qu'un passage : un centre
+     effleuré en cherchant le bon, un bouton touché par erreur. Il est ignoré dans tous les calculs (plages, interventions,
+     notes, export) ; l'état précédent se prolonge jusqu'au pointage suivant. Rien n'est effacé : l'écriture brute reste
+     enregistrée, et le dernier pointage, que rien ne remplace, compte toujours. */
+  var STABLE = 20 * 1000;
+  function retenus(evs) {
+    var s = sortEvents(evs);
+    return s.filter(function (e, i) { return !(s[i + 1] && s[i + 1].ts - e.ts < STABLE); });
+  }
   function segments(evs, now) {
-    var s = sortEvents(evs), out = [];
+    var s = retenus(evs), out = [];
     for (var i = 0; i < s.length; i++) {
       var e = s[i], n = s[i + 1];
       if (e.t === 'fin') continue;
@@ -87,10 +96,15 @@
     segments(evs, now).forEach(function (s) { splitByDay(s).forEach(function (p) { out.push(p); }); });
     return out;
   }
+  /* Plages à la minute : début et fin ramenés à la minute entière, comme l'heure affichée (08:00:59 se lit 08:00).
+     L'export et le contrôle du midi comptent ainsi : une plage affichée 08:00 – 09:25 dure 1:25, soit 85 minutes, sans secondes cachées. */
+  function minute(ts) { return Math.floor(ts / MIN) * MIN; }
+  function aLaMinute(p) { return Object.assign({}, p, { start: minute(p.start), end: minute(p.end) }); }
+  function piecesMin(evs, now) { return pieces(evs, now).map(aLaMinute); }
   /* Interventions : une suite d'écritures de travail sur le même centre, pauses comprises, jusqu'au changement de centre
      ou à la fin de journée. La note de fin de travail et le code d'intervention (D devis, R régie, G garantie) portent sur l'intervention. */
   function sessions(evs) {
-    var s = sortEvents(evs), out = [], cur = null;
+    var s = retenus(evs), out = [], cur = null;
     function close(ts) { if (cur) { cur.end = ts; cur.closed = true; out.push(cur); cur = null; } }
     s.forEach(function (e) {
       if (e.t === 'travail') {
@@ -157,7 +171,7 @@
     });
     return o;
   }
-  // Seuils suisses : > 5 h 30 → 15 min, > 7 h → 30 min, > 9 h → 60 min. Signalement seul, jamais de retrait.
+  // Pauses légales (art. 15 LTr) : > 5 h 30 → 15 min, > 7 h → 30 min, > 9 h → 60 min. Signalement seul.
   function legalCheck(dayPieces) {
     var t = totals(dayPieces), out = [];
     var req = t.travail > 9 * H ? 60 : t.travail > 7 * H ? 30 : t.travail > 5.5 * H ? 15 : 0;
@@ -172,18 +186,56 @@
     });
     return out;
   }
-  // Midi GIOT : 60 min consécutives ; une exception d'au moins 30 min par semaine (lundi–dimanche).
-  function midiCheck(evs, now, rule) {
-    var segs = segments(evs, now), out = [], used = {};
-    segs.forEach(function (s, i) {
-      if (s.t !== 'pause' || s.cat !== 'midi' || s.open) return;
-      var nx = segs[i + 1];
-      if (!nx || nx.t !== 'travail') return; // pas de reprise l'après-midi
-      var min = (s.end - s.start) / MIN;
-      if (min >= rule.min) return;
-      var wk = weekKey(s.start), date = dayKey(s.start);
-      if (min >= rule.exMin && !used[wk]) { used[wk] = true; out.push({ date: date, min: min, kind: 'exception' }); }
-      else out.push({ date: date, min: min, kind: 'ecart', motif: min < rule.exMin ? 'moins de ' + rule.exMin + ' min' : 'deuxième exception de la semaine' });
+  /* Bilan de chaque journée travaillée : heures pointées, pauses comptées comme travail, midi obligatoire, heures retenues.
+     Tout est compté à la minute entière ; les heures pointées ne sont jamais modifiées.
+
+     Midi obligatoire (règle de la maison). Une journée travaillée le matin et l'après-midi (du travail avant 12 h et encore
+     après 14 h) doit compter, ENTRE 11 h ET 14 h 30, une pause d'au moins rule.min minutes d'un seul tenant. Le midi pris est
+     la plus longue interruption du travail (pause, midi, ou arrêt puis reprise), pour sa partie située entre 11 h et 14 h 30.
+     Ce qui manque est retenu sur les heures de la journée. Une fois par semaine (lundi–dimanche), un midi d'au moins
+     rule.exMin minutes est admis sans retenue (0 : pas d'exception). rule.depuis (AAAA-MM-JJ) : premier jour d'application.
+
+     Pauses comptées. Les autres pauses de la journée (bouton Pause, appel privé) comptent comme temps de travail, jusqu'à
+     rule.payees minutes par jour (0 : aucune). L'interruption qui sert de midi n'en fait jamais partie.
+
+     Renvoie une ligne par jour travaillé : { date, travail, pauses, payee, concerne, pris, du, manque, retenu (ms), open,
+     kind : 'libre' (midi non exigé ce jour-là) | 'ok' | 'exception' | 'retenue' }, retenu = travail + payee − manque. */
+  var MIDI = { matin: '12:00', aprem: '14:00', de: '11:00', a: '14:30' };
+  function bilanJours(evs, now, rule) {
+    rule = rule || {};
+    var du = Math.max(0, +rule.min || 0) * MIN, ex = Math.max(0, +rule.exMin || 0) * MIN, cap = Math.max(0, +rule.payees || 0) * MIN;
+    var parJour = {}, out = [], used = {};
+    piecesMin(evs, now).forEach(function (p) { if (p.t !== 'cafe') (parJour[p.date] || (parJour[p.date] = [])).push(p); });
+    Object.keys(parJour).sort().forEach(function (date) {
+      var ps = parJour[date].sort(function (x, y) { return x.start - y.start; });
+      var w = ps.filter(function (p) { return p.t === 'travail'; });
+      if (!w.length) return;
+      var last = ps[ps.length - 1], open = !!last.open, fin = w[w.length - 1].end;
+      var o = { date: date, travail: 0, pauses: 0, payee: 0, concerne: false, pris: 0, du: du, manque: 0, kind: 'libre', open: open };
+      ps.forEach(function (p) { if (p.t === 'travail') o.travail += p.end - p.start; else o.pauses += p.end - p.start; });
+      // Midi : la journée n'est concernée que si l'on a travaillé avant midi et encore après 14 h.
+      var g0 = 0, g1 = 0; // l'interruption qui sert de midi
+      o.concerne = !!du && !(rule.depuis && date < rule.depuis) && w[0].start < atTime(date, MIDI.matin) && fin > atTime(date, MIDI.aprem);
+      if (o.concerne) {
+        var de = atTime(date, MIDI.de), a = atTime(date, MIDI.a);
+        var essai = function (x0, x1) { var dans = Math.min(x1, a) - Math.max(x0, de); if (dans > o.pris) { o.pris = dans; g0 = x0; g1 = x1; } };
+        for (var i = 1; i < w.length; i++) essai(w[i - 1].end, w[i].start);
+        if (open && last.t !== 'travail') essai(fin, last.end); // pause en cours : elle compte déjà pour ce qu'elle dure
+        o.kind = 'ok';
+        if (o.pris < du) {
+          var wk = weekKey(dayStart(date) + 12 * H);
+          if (ex && o.pris >= ex && !used[wk]) { used[wk] = true; o.kind = 'exception'; }
+          else { o.kind = 'retenue'; o.manque = du - o.pris; }
+        }
+      }
+      // Pauses comptées comme travail : les pauses ordinaires hors du midi, plafonnées par jour.
+      if (cap) {
+        var somme = 0;
+        ps.forEach(function (p) { if (p.t === 'pause' && p.cat !== 'midi' && !(p.start >= g0 && p.end <= g1)) somme += p.end - p.start; });
+        o.payee = Math.min(somme, cap);
+      }
+      o.retenu = Math.max(0, o.travail + o.payee - o.manque);
+      out.push(o);
     });
     return out;
   }
@@ -314,20 +366,28 @@
     return { name: 'Absences', rows: rows, widths: [24, 14, 12, 12, 13, 13, 40], n: l.length };
   }
   function workbook(m, f, now) {
-    var S = { h: 1, date: 2, time: 3, dur: 4, chf: 5, b: 6, bdur: 7 };
+    var S = { h: 1, date: 2, time: 3, dur: 4, chf: 5, b: 6, bdur: 7, hm: 8, ent: 9, bhm: 10 }; // dur et bdur : [h]:mm (totaux au-delà de 24 h) ; hm et bhm (gras) : h:mm ; ent : nombre entier
     function hd(v) { return { v: v, s: S.h }; }
     function socNom(id) { return id && m.socs[id] ? m.socs[id].nom : '—'; }
-    var detail = [['Date', 'Société', 'Collaborateur', 'Centre', 'Code analytique', 'Lieu', 'Début', 'Fin', 'Catégorie', 'Durée', 'Minutes', 'Plage', 'Corrigé', 'Code', 'Note'].map(hd)];
-    var parD = {}, parC = {};
+    function mn(ms) { return Math.round(ms / MIN); }
+    var R = m.regles || {}, midiMin = +R.midiMin || 0;
+    var detail = [], parD = {}, parC = {}, totRet = 0, totPay = 0;
+    // chaque ligne du Détail porte sa clé de tri : date, collaborateur, heure de début (la retenue de midi ferme la journée)
+    function ligne(date, nom, t, cells) { detail.push({ k: [excelDate(date), nom, t], c: cells }); }
     m.people.forEach(function (p) {
       if (f.pid && f.pid !== p.id) return;
       var nom = p.prenom + ' ' + p.nom, socs = p.socs || [];
       var parEv = {}; // écriture → son intervention (code et note)
       sessions(m.evs(p.id)).forEach(function (se) { se.ids.forEach(function (id) { parEv[id] = se; }); });
-      pieces(m.evs(p.id), now).forEach(function (x) {
+      // Plus de 11 h sur une même écriture, sans aucun geste : fin de journée (ou reprise) très probablement oubliée.
+      var longue = {};
+      segments(m.evs(p.id), now).forEach(function (g) { if (g.end - g.start > 11 * H) longue[g.evId] = true; });
+      function jour(date) { var kc = nom + '|' + p.id + '|' + date; return parC[kc] || (parC[kc] = { nom: nom, date: date, travail: 0, pause: 0, bilan: null }); }
+      piecesMin(m.evs(p.id), now).forEach(function (x) {
         if (x.t === 'cafe') return; // avant le pointage de début : ni travail ni pause
         if ((f.from && x.date < f.from) || (f.to && x.date > f.to)) return;
         var ms = x.end - x.start, d = null, soc = null, se = x.t === 'travail' ? parEv[x.evId] : null;
+        if (!ms && !(se && se.carrier === x.evId && se.note)) return; // début et fin dans la même minute : aucune durée à écrire
         if (x.t === 'travail') {
           d = m.dossiers[x.d] || { nom: 'Centre supprimé', code: '', soc: null };
           soc = d.soc;
@@ -338,23 +398,44 @@
           if (f.soc && socs.indexOf(f.soc) < 0) return;
           soc = socs.length === 1 ? socs[0] : null;
         }
-        var kc = nom + '|' + p.id + '|' + x.date;
-        var c = parC[kc] || (parC[kc] = { nom: nom, date: x.date, travail: 0, pause: 0 });
+        var c = jour(x.date);
         if (x.t === 'travail') c.travail += ms; else c.pause += ms;
-        detail.push([
+        ligne(x.date, nom, x.start, [
           { v: excelDate(x.date), s: S.date }, socNom(soc), nom, d ? d.nom : '—', d ? (d.code || '') : '',
           x.t === 'travail' ? (x.lieu === 'mission' ? 'Déplacement' : 'Bureau') : '—',
           { v: excelSerial(x.start), s: S.time }, { v: excelSerial(x.end), s: S.time },
           x.t === 'travail' ? 'Travail' : (x.cat === 'midi' ? 'Repas' : 'Pause'),
-          { v: ms / DAY, s: S.dur }, Math.round(ms / MIN * 100) / 100, x.open ? 'Provisoire' : 'Close', x.corr ? 'Oui' : '',
+          { v: ms / DAY, s: S.hm }, { v: ms / MIN, s: S.ent }, longue[x.evId] ? 'À vérifier' : x.open ? 'Provisoire' : 'Terminée', x.corr ? 'Oui' : '',
           // code d'intervention : sur toutes les lignes de l'intervention dès qu'elle est notée ; note : sur sa dernière écriture
-          se && (se.ci || se.note) && d && !d.commun ? (CODES[se.ci] || CODES.D) : '', se && se.carrier === x.evId ? se.note : ''
+          se && (se.ci || se.note) && d && !d.commun ? (CODES[se.ci] || CODES.D) : '',
+          (se && se.carrier === x.evId && se.note) || (longue[x.evId] ? 'Plus de 11 h sans aucun pointage : ' + (x.t === 'travail' ? 'fin de journée oubliée ?' : 'reprise oubliée ?') + ' Heure à corriger dans l’onglet Journée.' : '')
+        ]);
+      });
+      // Bilan du jour : une ligne « Pauses comptées » (en plus) et, si le midi obligatoire n'a pas été pris en entier, une ligne « Retenue midi » (en moins).
+      if (f.soc && socs.indexOf(f.soc) < 0) return;
+      bilanJours(m.evs(p.id), now, { min: p.midi ? midiMin : 0, exMin: R.midiEx, depuis: R.midiDepuis, payees: R.pausesPayees }).forEach(function (j) {
+        if ((f.from && j.date < f.from) || (f.to && j.date > f.to)) return;
+        jour(j.date).bilan = j;
+        var soc1 = socNom(socs.length === 1 ? socs[0] : null), etat = j.open ? 'Provisoire' : 'Terminée';
+        if (j.payee) {
+          totPay += j.payee;
+          ligne(j.date, nom, 8e15, [
+            { v: excelDate(j.date), s: S.date }, soc1, nom, 'Pauses de la journée', '', '—', '', '',
+            { v: 'Pauses comptées', s: S.b }, { v: j.payee / DAY, s: S.bhm }, { v: mn(j.payee), s: S.b }, etat, '', '',
+            mn(j.payee) + ' min de pause comptées comme temps de travail' + (R.pausesPayees ? ' (' + R.pausesPayees + ' min par jour au plus)' : '')
+          ]);
+        }
+        if (!j.manque) return;
+        totRet += j.manque;
+        ligne(j.date, nom, 9e15, [
+          { v: excelDate(j.date), s: S.date }, soc1, nom, 'Midi obligatoire ' + midiMin + ' min', '', '—', '', '',
+          { v: 'Retenue midi', s: S.b }, { v: '−' + dur(j.manque).replace(' h ', ':'), s: S.b }, { v: -mn(j.manque), s: S.b }, etat, '', '',
+          (j.pris ? 'Midi pris entre 11 h et 14 h 30 : ' + mn(j.pris) + ' min' : 'Aucune pause de midi entre 11 h et 14 h 30') + ' sur ' + midiMin + ' ; ' + mn(j.manque) + ' min retirées des heures du jour'
         ]);
       });
     });
-    var head = detail.shift();
-    detail.sort(function (a, b) { return a[0].v - b[0].v || (a[2] < b[2] ? -1 : a[2] > b[2] ? 1 : 0) || a[6].v - b[6].v; });
-    detail.unshift(head);
+    detail.sort(function (a, b) { return a.k[0] - b.k[0] || (a.k[1] < b.k[1] ? -1 : a.k[1] > b.k[1] ? 1 : 0) || (a.k[2] === b.k[2] ? 0 : a.k[2] < b.k[2] ? -1 : 1); });
+    detail = [['Date', 'Société', 'Collaborateur', 'Centre', 'Code analytique', 'Lieu', 'Début', 'Fin', 'Catégorie', 'Durée', 'Minutes', 'État', 'Corrigé', 'Code', 'Note'].map(hd)].concat(detail.map(function (l) { return l.c; }));
     // Par dossier
     var sd = [['Société', 'Centre', 'Code analytique', 'Collaborateur', 'Travail'].map(hd)], totD = 0;
     Object.keys(parD).sort().forEach(function (k) {
@@ -364,27 +445,30 @@
       totD += t;
     });
     sd.push([{ v: 'Total période', s: S.b }, '', '', '', { v: totD / DAY, s: S.bdur }]);
-    // Par collaborateur
-    var sc = [['Collaborateur', 'Date', 'Travail', 'Pauses'].map(hd)], totT = 0, totP = 0, curN = null, tn = 0, pn = 0;
-    function closeN() { if (curN !== null) sc.push([{ v: curN, s: S.b }, { v: 'Total période', s: S.b }, { v: tn / DAY, s: S.bdur }, { v: pn / DAY, s: S.bdur }]); }
+    // Par collaborateur : heures pointées, pauses, pauses comptées comme travail, midi pris, retenue de midi, heures retenues
+    var sc = [['Collaborateur', 'Date', 'Travail', 'Pauses', 'Pauses comptées', 'Midi pris', 'Retenue midi', 'Travail retenu', 'Remarque'].map(hd)], totT = 0, totP = 0, totR = 0, totY = 0, curN = null, tn = 0, pn = 0, rn = 0, yn = 0;
+    function net(t, y, r) { return Math.max(0, t + y - r) / DAY; }
+    function closeN() { if (curN !== null) sc.push([{ v: curN, s: S.b }, { v: 'Total période', s: S.b }, { v: tn / DAY, s: S.bdur }, { v: pn / DAY, s: S.bdur }, { v: yn / DAY, s: S.bdur }, '', { v: rn / DAY, s: S.bdur }, { v: net(tn, yn, rn), s: S.bdur }, '']); }
     Object.keys(parC).sort().forEach(function (k) {
-      var c = parC[k];
-      if (c.nom !== curN) { closeN(); curN = c.nom; tn = 0; pn = 0; }
-      tn += c.travail; pn += c.pause; totT += c.travail; totP += c.pause;
-      sc.push([c.nom, { v: excelDate(c.date), s: S.date }, { v: c.travail / DAY, s: S.dur }, { v: c.pause / DAY, s: S.dur }]);
+      var c = parC[k], j = c.bilan, r = j ? j.manque : 0, y = j ? j.payee : 0, midi = j && j.concerne;
+      if (c.nom !== curN) { closeN(); curN = c.nom; tn = 0; pn = 0; rn = 0; yn = 0; }
+      tn += c.travail; pn += c.pause; rn += r; yn += y; totT += c.travail; totP += c.pause; totR += r; totY += y;
+      sc.push([c.nom, { v: excelDate(c.date), s: S.date }, { v: c.travail / DAY, s: S.dur }, { v: c.pause / DAY, s: S.dur }, y ? { v: y / DAY, s: S.dur } : '',
+        midi ? { v: j.pris / DAY, s: S.dur } : '', r ? { v: r / DAY, s: S.dur } : '', { v: net(c.travail, y, r), s: S.dur },
+        !midi ? '' : j.kind === 'exception' ? 'Midi court : exception hebdomadaire, rien de retiré' : r ? (j.pris ? 'Midi de ' + mn(j.pris) + ' min : ' : 'Aucune pause de midi : ') + mn(r) + ' min retirées' : '']);
     });
     closeN();
-    sc.push([{ v: 'Total général', s: S.b }, '', { v: totT / DAY, s: S.bdur }, { v: totP / DAY, s: S.bdur }]);
+    sc.push([{ v: 'Total général', s: S.b }, '', { v: totT / DAY, s: S.bdur }, { v: totP / DAY, s: S.bdur }, { v: totY / DAY, s: S.bdur }, '', { v: totR / DAY, s: S.bdur }, { v: net(totT, totY, totR), s: S.bdur }, '']);
     var sa = absSheet(m.absences || [], m.people, f), nAbs = sa.n; delete sa.n;
     return {
       sheets: [
-        { name: 'Détail', rows: detail, widths: [12, 22, 22, 30, 16, 12, 8, 8, 11, 9, 9, 11, 9, 10, 40] },
-        { name: 'Par centre', rows: sd, widths: [22, 32, 16, 22, 11] },
-        { name: 'Par collaborateur', rows: sc, widths: [22, 14, 11, 11] },
-        sa,
+        { name: 'Détail', rows: detail, widths: [11, 20, 20, 30, 15, 12, 7, 7, 13, 8, 8, 10, 8, 9, 48], paysage: true },
+        { name: 'Par centre', rows: sd, widths: [22, 34, 16, 22, 11] },
+        { name: 'Par collaborateur', rows: sc, widths: [22, 12, 10, 10, 15, 10, 12, 13, 46], paysage: true },
+        Object.assign(sa, { paysage: true }),
         centresSheet(m.dossiers, m.socs)
-      ],
-      totals: { detailTravail: detail.slice(1).reduce(function (a, r) { return a + (r[8] === 'Travail' ? r[9].v : 0); }, 0) * DAY, parDossier: totD, parCollab: totT, pauses: totP, lignes: detail.length - 1, absences: nAbs }
+      ].map(function (sh) { sh.entete = 'Du ' + (f.from || '').split('-').reverse().join('.') + ' au ' + (f.to || '').split('-').reverse().join('.'); return sh; }),
+      totals: { detailTravail: detail.slice(1).reduce(function (a, r) { return a + (r[8] === 'Travail' ? r[9].v : 0); }, 0) * DAY, parDossier: totD, parCollab: totT, pauses: totP, retenues: totRet, payees: totPay, lignes: detail.length - 1, absences: nAbs }
     };
   }
 
@@ -392,9 +476,9 @@
     MIN: MIN, H: H, DAY: DAY, LABEL: LABEL, ETAT: ETAT, TRANSF: TRANSF,
     parts: parts, fromLocal: fromLocal, dayKey: dayKey, dayStart: dayStart, nextDayStart: nextDayStart, addDays: addDays,
     weekKey: weekKey, hhmm: hhmm, atTime: atTime, excelSerial: excelSerial, excelDate: excelDate, dur: dur, frDate: frDate, pad: pad,
-    sortEvents: sortEvents, segments: segments, splitByDay: splitByDay, pieces: pieces, statusOf: statusOf, act: act,
-    totals: totals, legalCheck: legalCheck, midiCheck: midiCheck, rkey: rkey, interventions: interventions,
-    montants: montants, refRapport: refRapport, transmettre: transmettre, canMove: canMove, ctxOf: ctxOf, workbook: workbook, centresSheet: centresSheet, sessions: sessions, CODES: CODES,
+    sortEvents: sortEvents, retenus: retenus, STABLE: STABLE, segments: segments, splitByDay: splitByDay, pieces: pieces, statusOf: statusOf, act: act,
+    totals: totals, legalCheck: legalCheck, bilanJours: bilanJours, MIDI: MIDI, rkey: rkey, interventions: interventions,
+    minute: minute, aLaMinute: aLaMinute, piecesMin: piecesMin, montants: montants, refRapport: refRapport, transmettre: transmettre, canMove: canMove, ctxOf: ctxOf, workbook: workbook, centresSheet: centresSheet, sessions: sessions, CODES: CODES,
     ABS: ABS, joursAbs: joursAbs, feriesDe: feriesDe, absLignes: absLignes
   };
 })(typeof window !== 'undefined' ? window : globalThis);

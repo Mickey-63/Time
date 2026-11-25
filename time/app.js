@@ -10,7 +10,7 @@
   /* ---------- état local ---------- */
   var LS = 'pointage-v2';
   function blank() {
-    return { v: 2, token: '', me: null, lastPid: '', socs: {}, dossiers: {}, mes: [], epingles: [], defaut: null, regles: { midiMin: 60, midiEx: 30, rappelPause: 20, rappelMidi: 75 },
+    return { v: 2, token: '', me: null, lastPid: '', socs: {}, dossiers: {}, mes: [], epingles: [], defaut: null, regles: { midiMin: 60, midiEx: 30, rappelPause: 20, rappelMidi: 75, pausesPayees: 30 },
       evs: {}, dirty: {}, favs: [], lieu: 'bureau', tab: 'pointage', jour: null, seq: 0, skew: 0 };
   }
   var S = (function () {
@@ -153,12 +153,19 @@
       if (a.type === 'legale') out.push('Pause légale : ' + a.requis + ' min requises, ' + a.pris + ' min prises.');
       else out.push('Plus de 5 h 30 de travail d’affilée sans pause.');
     });
-    if (S.me.midi) E.midiCheck(evs(), t, { min: S.regles.midiMin, exMin: S.regles.midiEx }).forEach(function (m) {
-      if (m.date !== date) return;
-      var mn = Math.round(m.min);
-      out.push(m.kind === 'exception' ? 'Midi de ' + mn + ' min : exception hebdomadaire utilisée.' : 'Midi de ' + mn + ' min : écart signalé (' + m.motif + '). Durée réelle conservée.');
-    });
+    var m = bilanDuJour(date, t);
+    if (m && (m.kind === 'exception' || m.kind === 'retenue')) {
+      var mn = Math.round(m.pris / E.MIN), du = S.regles.midiMin, ret = Math.round(m.manque / E.MIN);
+      out.push(m.kind === 'exception' ? 'Midi de ' + mn + ' min au lieu de ' + du + ' : exception hebdomadaire utilisée, rien n’est retiré.'
+        : (m.pris ? 'Midi de ' + mn + ' min entre 11 h et 14 h 30, au lieu de ' + du + ' obligatoires' : 'Pas de pause de midi entre 11 h et 14 h 30 : ' + du + ' min sont obligatoires') + '. ' + ret + ' min sont retirées de tes heures du jour.');
+    }
     return out;
+  }
+
+  // Bilan d'un jour : pauses comptées comme travail, midi obligatoire, travail retenu (rien si le jour n'a pas de travail).
+  function bilanDuJour(date, t) {
+    if (!S.me) return null;
+    return E.bilanJours(evs(), t, { min: S.me.midi ? S.regles.midiMin : 0, exMin: S.regles.midiEx, depuis: S.regles.midiDepuis, payees: S.regles.pausesPayees }).filter(function (j) { return j.date === date; })[0] || null;
   }
 
   /* ---------- vues ---------- */
@@ -207,6 +214,12 @@
     if (st.t === 'pause' && ctx && ctx.d) {
       if (list.indexOf(ctx.d) >= 0) h += '<button class="resume" data-act="reprendre"><b>Reprendre · ' + esc(dos(ctx.d).nom) + '</b><span>' + (lieu === 'mission' ? 'En déplacement' : 'Au bureau') + ' · une pression</span></button>';
       else h += '<div class="note"><b>Le centre précédent n’est plus disponible.</b> Choisis un de tes centres pour reprendre. Tes heures déjà faites sont conservées.</div>';
+      // Midi obligatoire : seul le temps de pause pris entre 11 h et 14 h 30 compte.
+      var jr = E.dayKey(t), m0 = Math.max(E.minute(st.since), E.atTime(jr, E.MIDI.de)), m1 = E.atTime(jr, E.MIDI.a), fm = m0 + R.midiMin * E.MIN;
+      if (st.cat === 'midi' && S.me.midi && R.midiMin && !(R.midiDepuis && jr < R.midiDepuis)) {
+        if (fm <= m1) { if (t < fm) h += '<div class="mute small">Midi obligatoire de ' + R.midiMin + ' min, entre 11 h et 14 h 30 : reprends à partir de ' + E.hhmm(fm) + '. Plus tôt, le temps manquant est retiré de tes heures.</div>'; }
+        else h += '<div class="mute small">Le midi de ' + R.midiMin + ' min se prend entre 11 h et 14 h 30 : ' + Math.max(0, Math.round((m1 - m0) / E.MIN)) + ' min seulement compteront aujourd’hui, le reste est retiré de tes heures.</div>';
+      }
       var lim = (st.cat === 'midi' ? R.rappelMidi : R.rappelPause) * E.MIN;
       if (t - st.since > lim) h += '<div class="note">Pause en cours depuis ' + tick(0, st.since) + '. Poursuis-la ou reprends : ce rappel ne change jamais ton statut.</div>';
     }
@@ -268,7 +281,7 @@
     ps.forEach(function (p) {
       var e = S.evs[p.evId], own = e && e.ts === p.start, hist = own && e.hist && e.hist.length ? e.hist[e.hist.length - 1] : null;
       var se = p.t === 'travail' ? parEv[p.evId] : null, porte = se && se.carrier === p.evId && own, notee = se && (se.note || se.ci);
-      h += '<div class="it"><span class="stripe s-' + (p.t === 'travail' ? (p.lieu === 'mission' ? 'mission' : 'bureau') : 'pause') + '"></span><div><div class="t1">' + E.hhmm(p.start) + ' – ' + (p.open ? 'en cours' : E.hhmm(p.end)) + ' · ' + E.dur(p.end - p.start) + '</div>' +
+      h += '<div class="it"><span class="stripe s-' + (p.t === 'travail' ? (p.lieu === 'mission' ? 'mission' : 'bureau') : 'pause') + '"></span><div><div class="t1">' + E.hhmm(p.start) + ' – ' + (p.open ? 'en cours' : E.hhmm(p.end)) + ' · ' + E.dur(E.minute(p.end) - E.minute(p.start)) + '</div>' +
         '<div class="t2">' + esc(e ? evLabel(e) : '') + (hist ? ' · corrigé (avant : ' + E.hhmm(hist.old) + ')' : '') + '</div>' +
         (porte && notee ? '<div class="t3">' + (estBat(se.d) ? esc(E.CODES[se.ci] || E.CODES.D) + (se.note ? ' · ' : '') : '') + esc(se.note) + '</div>' : '') + '</div>' +
         '<span class="acts">' + (porte && (noteOn() || notee) ? '<button class="btn ghost sm" data-act="note" data-ev="' + esc(p.evId) + '">Note</button>' : '') +
@@ -283,7 +296,8 @@
     return h + '</div>';
   }
   function vJournee(list, t) {
-    var today = E.dayKey(t), date = S.jour || today, ps = E.pieces(list, t).filter(function (x) { return x.date === date; }), tot = E.totals(ps);
+    // Totaux à la minute entière, comme les heures affichées et comme l'export Excel.
+    var today = E.dayKey(t), date = S.jour || today, ps = E.piecesMin(list, t).filter(function (x) { return x.date === date; }), tot = E.totals(ps);
     var h = '<div class="datenav"><button data-act="jour" data-n="-1" aria-label="Jour précédent">‹</button><b>' + E.frDate(date) + (date === today ? ' · aujourd’hui' : '') + '</b><button data-act="jour" data-n="1" aria-label="Jour suivant"' + (date >= today ? ' disabled' : '') + '>›</button></div>' +
       '<div class="kpis"><div class="kpi"><b>' + E.dur(tot.travail) + '</b><span>Travail</span></div><div class="kpi"><b>' + E.dur(tot.pause) + '</b><span>Pauses</span></div><div class="kpi"><b>' + E.dur(tot.cafe) + '</b><span>Avant travail</span></div></div>';
     // Absence saisie par le bureau pour ce jour (la sienne avant un jour férié commun).
@@ -292,6 +306,8 @@
     if (ab) h += '<div class="note">Absence enregistrée par le bureau : <b>' + esc(E.ABS[ab.type] || ab.type) + '</b>' + (ab.demi ? ', demi-journée' : '') +
       (ab.du !== ab.au ? ', du ' + E.frDate(ab.du) + ' au ' + E.frDate(ab.au) : '') + '. Une erreur ? Signale-la au bureau.</div>';
     alertes(date, t).forEach(function (a) { h += '<div class="note warn">' + esc(a) + '</div>'; });
+    var mj = bilanDuJour(date, t);
+    if (mj && (mj.manque || mj.payee)) h += '<div class="card"><div class="row"><div>Travail retenu<div class="mute small">' + E.dur(mj.travail) + ' pointées' + (mj.payee ? ', plus ' + E.dur(mj.payee) + ' de pauses comptées' : '') + (mj.manque ? ', moins ' + E.dur(mj.manque) + ' de midi non pris' : '') + '</div></div><b>' + E.dur(mj.retenu) + '</b></div></div>';
     h += '<div class="card"><div class="sec"><span>Relevé du jour</span><span>heures réelles</span></div>' + timeline(date, t) + '</div>';
     var parD = Object.keys(tot.parDossier);
     if (parD.length) {

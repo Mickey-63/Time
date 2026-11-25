@@ -66,6 +66,8 @@ function cfg(): array {
     'regles' => ['midiMin' => 60, 'midiEx' => 30, 'rappelPause' => 20, 'rappelMidi' => 75],
   ];
   $c['regles'] += ['note' => false, 'noteDepuis' => 0]; // note de fin de travail : désactivée tant que l'administration ne l'active pas
+  $c['regles'] += ['midiDepuis' => '']; // premier jour où le midi trop court est retenu sur les heures (AAAA-MM-JJ) ; vide : depuis toujours
+  $c['regles'] += ['pausesPayees' => 30]; // pauses de la journée comptées comme temps de travail : minutes par jour au plus (deux pauses de 15 min) ; 0 : aucune
   return $c;
 }
 function empIndex(array $c, string $id): int { foreach ($c['employes'] as $i => $e) if ($e['id'] === $id) return $i; return -1; }
@@ -128,6 +130,20 @@ function semis(): void {
     if ($k === 0 && !$aDefaut) { $c['dossiers'][$i]['defaut'] = true; $c['dossiers'][$i]['actif'] = true; }
   }
   $c['semis'] = 1;
+  wr('cfg', $c);
+}
+/* Mise à niveau du 25 novembre 2026 (une seule fois) : le midi de 60 minutes devient obligatoire pour les employés qui figurent
+   au tableau d'équipe — la case reste dans la fiche pour en dispenser quelqu'un — et le temps manquant est retenu à partir du
+   lendemain de la mise en ligne. Les personnes sorties du tableau par la direction (annoncées comme dispensées du midi) gardent
+   leur réglage. */
+function miseANiveau(): void {
+  if ((rd('cfg', [])['maj'] ?? 0) >= 1) return;
+  lock();
+  $c = cfg();
+  if (($c['maj'] ?? 0) >= 1) return;
+  foreach ($c['employes'] as $k => $e) if (auTableau($e)) $c['employes'][$k]['midi'] = true;
+  if (($c['regles']['midiDepuis'] ?? '') === '') $c['regles']['midiDepuis'] = date('Y-m-d', (int) (NOW / 1000) + 86400);
+  $c['maj'] = 1;
   wr('cfg', $c);
 }
 function ip(): string { return (string) ($_SERVER['REMOTE_ADDR'] ?? '?'); }
@@ -279,6 +295,7 @@ function etatSet(string $pid, array $evs): void {
 boot();
 reinit();
 semis();
+miseANiveau();
 $a = (string) ($_GET['a'] ?? '');
 $in = json_decode((string) file_get_contents('php://input'), true);
 if (!is_array($in)) $in = [];
@@ -501,7 +518,7 @@ switch ($a) {
     foreach ((array) ($x['socs'] ?? []) as $s) if (is_string($s) && isset($c['socs'][$s]) && !in_array($s, $socs, true)) $socs[] = $s;
     if (!$socs) fail('Choisissez au moins une société.');
     $e['socs'] = $socs;
-    $e['midi'] = !empty($x['midi']);
+    $e['midi'] = !isset($x['midi']) || !empty($x['midi']);       // midi obligatoire : oui par défaut
     $e['tous'] = !empty($x['tous']);
     $wasActif = !empty($e['actif']);
     $e['actif'] = !isset($x['actif']) || !empty($x['actif']);
@@ -764,8 +781,13 @@ switch ($a) {
     needAdmin($in);
     lock();
     $c = cfg();
-    foreach (['midiMin', 'midiEx', 'rappelPause', 'rappelMidi'] as $k) {
+    foreach (['midiMin', 'midiEx', 'rappelPause', 'rappelMidi', 'pausesPayees'] as $k) {
       if (isset($in['regles'][$k])) $c['regles'][$k] = max(0, min(240, (int) $in['regles'][$k]));
+    }
+    if (isset($in['regles']['midiDepuis'])) {
+      $d = (string) $in['regles']['midiDepuis'];
+      if ($d !== '' && !jourOk($d)) fail('Vérifiez la date de début de la retenue de midi.');
+      $c['regles']['midiDepuis'] = $d;
     }
     if (isset($in['regles']['note'])) {
       $on = !empty($in['regles']['note']);

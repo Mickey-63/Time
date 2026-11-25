@@ -32,17 +32,17 @@
 <body>
 <div class="lec" id="app"></div>
 <noscript>Cette page a besoin de JavaScript. <a href="index.html">Retour au pointage</a></noscript>
-<script src="commun.js?v=12"></script>
+<script src="commun.js?v=16"></script>
 <script>
 (function () {
   'use strict';
   var M = window.MANUELS, esc = window.esc, root = document.getElementById('app');
   var k = (/[?&]d=([a-z]+)/.exec(location.search) || [])[1]; if (!M.docs[k]) k = 'nuls';
-  var d = M.docs[k], autre = k === 'nuls' ? 'detail' : 'nuls', pdf = d.pdf + '?v=' + M.v, fichier = null, msg = '';
+  var d = M.docs[k], autres = Object.keys(M.docs).filter(function (x) { return x !== k; }), pdf = d.pdf + '?v=' + M.v, fichier = null, msg = '';
   var appli = !!navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
   function render() {
     var h = '<div class="lec-top"><div class="l1"><a class="btn" href="index.html">‹ Retour au pointage</a><h1>' + esc(d.titre) + '</h1></div>' +
-      '<div class="l2"><button class="btn ghost sm" id="pdf">Enregistrer ou imprimer le PDF</button><a class="btn ghost sm" href="aide.html?d=' + autre + '">' + esc(M.docs[autre].court) + '</a></div>' +
+      '<div class="l2"><button class="btn ghost sm" id="pdf">Enregistrer ou imprimer le PDF</button>' + autres.map(function (x) { return '<a class="btn ghost sm" href="aide.html?d=' + x + '">' + esc(M.docs[x].court) + '</a>'; }).join('') + '</div>' +
       (msg ? '<div class="lec-msg" role="status">' + esc(msg) + '</div>' : '') + '</div><div class="lec-pages">';
     for (var i = 1; i <= d.pages; i++) h += '<img src="aide/' + k + '-' + i + '.jpg?v=' + M.v + '" width="1157" height="1638" alt="' + esc(d.titre) + ', page ' + i + ' sur ' + d.pages + '"' + (i > 2 ? ' loading="lazy"' : '') + '>';
     root.innerHTML = h + '</div><div class="lec-bas"><a class="btn full" href="index.html">‹ Retour au pointage</a></div>';

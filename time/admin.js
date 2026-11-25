@@ -79,7 +79,7 @@
       var nA = e.dossiers.filter(function (id) { var d = dosById(id); return d && d.actif && !d.commun; }).length;
       var nC = cfg.dossiers.filter(function (d) { return d.actif && d.commun && e.socs.indexOf(d.soc) >= 0; }).length;
       var nb = nA ? nA + ' bâtiment' + (nA > 1 ? 's' : '') + ' épinglé' + (nA > 1 ? 's' : '') : 'aucun bâtiment épinglé';
-      h += '<div class="row' + (e.actif ? '' : ' off') + '"><div><div class="nm">' + esc(e.prenom + ' ' + e.nom) + '</div><div class="mute small">' + esc(e.socs.map(socNom).join(' et ')) + ' · ' + nb + (e.midi ? ' · midi 60 min' : '') + (e.tableau === false ? ' · hors tableau' : '') + (e.actif ? '' : ' · désactivé') + '</div></div>' +
+      h += '<div class="row' + (e.actif ? '' : ' off') + '"><div><div class="nm">' + esc(e.prenom + ' ' + e.nom) + '</div><div class="mute small">' + esc(e.socs.map(socNom).join(' et ')) + ' · ' + nb + (e.midi ? '' : ' · sans midi obligatoire') + (e.tableau === false ? ' · hors tableau' : '') + (e.actif ? '' : ' · désactivé') + '</div></div>' +
         '<button class="btn ghost sm" data-act="emp-edit" data-id="' + esc(e.id) + '">Modifier</button></div>';
     });
     return h + '</div>';
@@ -153,7 +153,7 @@
       '<label class="f" for="ex-soc">Société<select id="ex-soc" data-ex="soc">' + opt('', 'Toutes', ex.soc) + Object.keys(cfg.socs).map(function (s) { return opt(s, cfg.socs[s].nom, ex.soc); }).join('') + '</select></label>' +
       (exErr ? '<div class="err" role="alert">' + esc(exErr) + '</div>' : '') + (exMsg ? '<div class="ok-msg" role="status">' + esc(exMsg) + '</div>' : '') +
       '<button class="btn full" data-act="export"' + (busy ? ' disabled' : '') + '>' + (busy ? 'Préparation…' : 'Télécharger le classeur .xlsx') + '</button></div>' +
-      '<div class="mute small">Cinq feuilles : Détail (chaque plage avec début, fin, centre, code analytique, code d’intervention et note), Par centre, Par collaborateur, Absences (vacances, maladie, accident, jours fériés de la période, avec les jours ouvrés et les totaux par personne) et Centres (la liste complète des centres et bâtiments, à garder comme sauvegarde). Dates et durées numériques, cumuls au-delà de 24 h, minuit ventilé sur deux dates. Une plage encore ouverte est marquée « Provisoire », une heure corrigée « Oui » dans la colonne Corrigé.</div>';
+      '<div class="mute small">Cinq feuilles : Détail (chaque plage avec début, fin, centre, code analytique, code d’intervention et note ; par jour, une ligne « Pauses comptées » en plus et, si le midi obligatoire n’a pas été pris en entier entre 11 h et 14 h 30, une ligne « Retenue midi » en moins), Par centre (heures pointées), Par collaborateur (travail pointé, pauses, pauses comptées, midi pris, retenue de midi, travail retenu), Absences (vacances, maladie, accident, jours fériés de la période, avec les jours ouvrés et les totaux par personne) et Centres (la liste complète des centres et bâtiments, à garder comme sauvegarde). Mise en page A4, police Arial, dates jj.mm.aaaa. Un pointage remplacé par un autre dans les 20 secondes (centre effleuré, bouton touché par erreur) ne laisse aucune ligne. Les heures sont comptées à la minute entière, comme elles s’affichent : colonne Durée en h:mm, colonne Minutes en nombre entier (1:25 et 85). Minuit est ventilé sur deux dates. Colonne État : « Terminée », « Provisoire » pour une plage encore ouverte, « À vérifier » quand plus de 11 heures se suivent sans aucun pointage (fin de journée oubliée). Une heure corrigée porte « Oui » dans la colonne Corrigé.</div>';
   }
   function partageable(f) { try { return !!(window.File && navigator.canShare && navigator.canShare({ files: [f] })); } catch (e) { return false; } }
   function vDocs() {
@@ -181,8 +181,11 @@
     return '<div class="card"><div class="sec"><span>Adresses à transmettre</span></div>' +
       '<div class="row"><div><div>Tableau d’équipe, public</div><div class="mute small">' + esc(base) + 'etat.html</div></div><a class="btn ghost sm" href="etat.html">Ouvrir</a></div>' +
       '<div class="row"><div><div>Page de pointage des employés</div><div class="mute small">' + esc(base) + '</div></div><a class="btn ghost sm" href="index.html">Ouvrir</a></div></div>' +
-      '<div class="card"><div class="sec"><span>Règles</span><span>minutes</span></div><div class="two">' + num('midiMin', 'Midi obligatoire', R.midiMin) + num('midiEx', 'Exception hebdo.', R.midiEx) + num('rappelPause', 'Rappel pause', R.rappelPause) + num('rappelMidi', 'Rappel midi', R.rappelMidi) + '</div>' +
-      '<div class="mute small">Pauses légales fixes : plus de 5 h 30 → 15 min, plus de 7 h → 30 min, plus de 9 h → 60 min. Les écarts sont signalés à l’employé, jamais déduits. La règle du midi ne s’applique qu’aux employés chez qui elle est cochée.</div>' +
+      '<div class="card"><div class="sec"><span>Règles</span><span>minutes</span></div><div class="two">' + num('midiMin', 'Midi obligatoire', R.midiMin) + num('midiEx', 'Exception hebdo.', R.midiEx) + num('rappelPause', 'Rappel pause', R.rappelPause) + num('rappelMidi', 'Rappel midi', R.rappelMidi) + num('pausesPayees', 'Pauses comptées, par jour', R.pausesPayees) + '</div>' +
+      '<label class="f" for="rg-midiDepuis">Retenue de midi appliquée dès le<input type="date" id="rg-midiDepuis" value="' + esc(R.midiDepuis || '') + '"></label>' +
+      '<div class="mute small"><b>Midi obligatoire.</b> Une journée travaillée le matin et l’après-midi (du travail avant 12 h et encore après 14 h) doit compter, entre 11 h et 14 h 30, une pause d’au moins ' + R.midiMin + ' minutes d’un seul tenant. Seul le temps de pause pris entre 11 h et 14 h 30 compte. S’il en manque, le temps manquant est retiré des heures du jour : une ligne « Retenue midi » dans l’export Excel, les heures pointées restant intactes. Exception hebdo. : une fois par semaine, un midi d’au moins ce nombre de minutes passe sans retenue ; mettre 0 pour ne plus admettre d’exception. La règle vaut pour tous les employés, sauf ceux chez qui la case est décochée dans leur fiche.</div>' +
+      '<div class="mute small"><b>Pauses comptées.</b> Les pauses de la journée (bouton Pause, appel privé) comptent comme temps de travail, jusqu’à ce nombre de minutes par jour ; le surplus et le midi ne comptent pas. Mettre 0 pour ne compter aucune pause. Dans l’export : une ligne « Pauses comptées » par jour, et la colonne du même nom.</div>' +
+      '<div class="mute small">Pauses légales : plus de 5 h 30 → 15 min, plus de 7 h → 30 min, plus de 9 h → 60 min. Ces écarts-là sont signalés à l’employé, sans retenue.</div>' +
       '<div class="sec"><span>Note de fin de travail</span></div>' +
       '<label class="chk"><input type="checkbox" id="rg-note"' + (R.note ? ' checked' : '') + '>Demander une note à l’employé quand il quitte un bâtiment</label>' +
       '<div class="mute small">Deux ou trois mots sur ce qui a été fait, avec le code Devis, Régie ou Garantie (Devis par défaut). Obligatoire sur les bâtiments, possible sur les centres communs depuis l’onglet Journée. Le pointage n’est jamais retardé : l’heure est enregistrée avant que la note soit demandée. La note et le code sortent dans l’export Excel.</div>' +
@@ -218,8 +221,11 @@
             }).join('') + '</div>';
         } else h += '<div class="mute small">Aucun bâtiment pour cette société. Créez-les ou importez-les dans l’onglet Centres.</div>';
       }
-      h += chk('data-b="midi"', x.midi, 'Midi obligatoire de ' + cfg.regles.midiMin + ' min (règle GIOT)') + chk('data-b="tableau"', x.tableau !== false, 'Figure au tableau d’équipe (décoché : la personne pointe normalement, mais n’est pas affichée)') +
-        chk('data-b="actif"', x.actif, 'Actif : peut se connecter et pointer (décocher seulement pour un départ)');
+      h += '<div class="sec"><span>Options</span></div>' +
+        chk('data-b="tableau"', x.tableau !== false, 'Figure au tableau d’équipe') +
+        chk('data-b="midi"', x.midi, 'Midi obligatoire de ' + cfg.regles.midiMin + ' min : le temps manquant est retiré de ses heures') +
+        chk('data-b="actif"', x.actif, 'Actif : peut pointer') +
+        '<div class="mute small">Tableau d’équipe décoché : la personne pointe normalement et sort dans les exports, mais son nom et son statut n’apparaissent plus sur le tableau affiché à tous.</div>';
     } else if (sheet.type === 'dos') {
       h += '<h2>' + (x.id ? 'Modifier le centre' : 'Nouveau centre') + '</h2>' +
         '<label class="f" for="d-nom">Nom (adresse de l’immeuble, chantier, centre général)<input id="d-nom" data-f="nom" maxlength="60" value="' + esc(x.nom) + '"></label>' +
@@ -338,7 +344,7 @@
       return false;
     },
     alogout: function () { var t = token; setToken(''); cfg = null; err = ''; flash = ''; prov = ''; info = ''; api('logout', { token: t }).catch(function () { }); },
-    'emp-new': function () { sheet = { type: 'emp', x: { id: '', prenom: '', nom: '', pin: '', socs: Object.keys(cfg.socs).slice(0, 1), tous: true, dossiers: [], midi: false, actif: true, tableau: true } }; },
+    'emp-new': function () { sheet = { type: 'emp', x: { id: '', prenom: '', nom: '', pin: '', socs: Object.keys(cfg.socs).slice(0, 1), tous: true, dossiers: [], midi: true, actif: true, tableau: true } }; },
     'emp-edit': function (ds) {
       var e = cfg.employes.filter(function (p) { return p.id === ds.id; })[0]; if (!e) return;
       sheet = { type: 'emp', x: { id: e.id, prenom: e.prenom, nom: e.nom, pin: '', socs: e.socs.slice(), tous: !!e.tous, dossiers: (e.dossiers || []).slice(), midi: !!e.midi, actif: !!e.actif, tableau: e.tableau !== false } };
@@ -460,17 +466,18 @@
       run(call('export', { from: ex.from })).then(function (r) {
         var ds = {}; r.dossiers.forEach(function (d) { ds[d.id] = d; });
         var people = r.employes.slice().sort(byName), now = Date.now();
-        var wb = E.workbook({ people: people, dossiers: ds, socs: r.socs, evs: function (pid) { return r.events[pid] || []; }, absences: r.absences || [] }, { from: ex.from, to: ex.to, pid: ex.pid, soc: ex.soc }, now);
+        var wb = E.workbook({ people: people, dossiers: ds, socs: r.socs, evs: function (pid) { return r.events[pid] || []; }, absences: r.absences || [], regles: cfg.regles }, { from: ex.from, to: ex.to, pid: ex.pid, soc: ex.soc }, now);
         if (!wb.totals.lignes && !wb.totals.absences) { exErr = 'Aucun pointage ni absence sur cette période avec ces filtres. Pour la seule liste des centres : onglet Centres, « Exporter la liste ».'; return; }
         var name = 'Heures_' + ex.from + '_au_' + ex.to + '.xlsx';
         download(name, window.XlsxLite.build(wb.sheets));
-        exMsg = name + ' : ' + wb.totals.lignes + ' lignes, ' + E.dur(wb.totals.parCollab) + ' de travail, ' + E.dur(wb.totals.pauses) + ' de pauses' + (wb.totals.absences ? ', ' + wb.totals.absences + ' absence' + (wb.totals.absences > 1 ? 's' : '') : '') + '.';
+        exMsg = name + ' : ' + wb.totals.lignes + ' lignes, ' + E.dur(wb.totals.parCollab) + ' de travail, ' + E.dur(wb.totals.pauses) + ' de pauses' + (wb.totals.payees ? ' dont ' + E.dur(wb.totals.payees) + ' comptées comme travail' : '') + (wb.totals.retenues ? ', ' + E.dur(wb.totals.retenues) + ' de retenues de midi' : '') + (wb.totals.absences ? ', ' + wb.totals.absences + ' absence' + (wb.totals.absences > 1 ? 's' : '') : '') + '.';
       }, function (e) { exErr = msgOf(e); }).then(render);
       return false;
     },
     regles: function () {
-      var R = {}; ['midiMin', 'midiEx', 'rappelPause', 'rappelMidi'].forEach(function (k) { R[k] = parseInt(val('rg-' + k), 10) || 0; });
+      var R = {}; ['midiMin', 'midiEx', 'rappelPause', 'rappelMidi', 'pausesPayees'].forEach(function (k) { R[k] = parseInt(val('rg-' + k), 10) || 0; });
       var cn = document.getElementById('rg-note'); R.note = !!(cn && cn.checked);
+      R.midiDepuis = val('rg-midiDepuis');
       run(call('regles_save', { regles: R }), 'Règles enregistrées.').then(function (r) { cfg.regles = r.regles; }, function (e) { err = msgOf(e); }).then(render);
       return false;
     },
