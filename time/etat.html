@@ -35,14 +35,16 @@
     var t = now(), h = '<header><h1>Équipe</h1><span class="when">' + E.frDate(E.dayKey(t)) + ' · ' + E.hhmm(t) + '</span>' + window.LOGO + '</header>';
     if (!data) { root.innerHTML = h + '<div class="mute">' + (err ? 'Serveur injoignable. Nouvel essai automatique.' : 'Chargement…') + '</div>'; return; }
     if (err) h += '<div class="note warn">Connexion perdue : l’affichage peut ne plus être à jour.</div>';
+    // Les personnes « hors tableau » (fiche de l'employé) servent à la liste de connexion : elles ne sont ni affichées ni comptées ici.
+    var vus = data.people.filter(function (p) { return !p.hors; });
     var cnt = { bureau: 0, mission: 0, pause: 0, absent: 0 };
-    data.people.forEach(function (p) { cnt[p.code]++; });
+    vus.forEach(function (p) { cnt[p.code]++; });
     h += '<div class="counts">' + ['bureau', 'mission', 'pause', 'absent'].map(function (c) {
       return '<span class="chip st-' + c + '"><i></i>' + cnt[c] + ' ' + { bureau: 'au bureau', mission: 'en déplacement', pause: 'en pause', absent: 'absent' + (cnt[c] > 1 ? 's' : '') }[c] + '</span>';
     }).join('') + '</div>';
     if (!data.people.length) h += '<div class="note">Aucun employé n’est encore enregistré. <a href="admin.html">Ouvrir l’administration</a></div>';
     h += '<div class="bgrid">';
-    data.people.forEach(function (p) {
+    vus.forEach(function (p) {
       var travail = p.code === 'bureau' || p.code === 'mission', oubli = travail && p.since && t - p.since > 11 * E.H;
       h += '<div class="btile st-' + p.code + '"><div class="p">' + esc(p.prenom) + '</div><div class="n">' + esc(p.nom) + '</div>' +
         '<div class="l">' + ic(p.code) + (p.abs === 'vacances' ? 'En vacances' : p.abs === 'ferie' ? 'Jour férié' : window.LIB[p.code]) + '</div>' +

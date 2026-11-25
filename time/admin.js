@@ -79,7 +79,7 @@
       var nA = e.dossiers.filter(function (id) { var d = dosById(id); return d && d.actif && !d.commun; }).length;
       var nC = cfg.dossiers.filter(function (d) { return d.actif && d.commun && e.socs.indexOf(d.soc) >= 0; }).length;
       var nb = nA ? nA + ' bâtiment' + (nA > 1 ? 's' : '') + ' épinglé' + (nA > 1 ? 's' : '') : 'aucun bâtiment épinglé';
-      h += '<div class="row' + (e.actif ? '' : ' off') + '"><div><div class="nm">' + esc(e.prenom + ' ' + e.nom) + '</div><div class="mute small">' + esc(e.socs.map(socNom).join(' et ')) + ' · ' + nb + (e.midi ? ' · midi 60 min' : '') + (e.actif ? '' : ' · désactivé') + '</div></div>' +
+      h += '<div class="row' + (e.actif ? '' : ' off') + '"><div><div class="nm">' + esc(e.prenom + ' ' + e.nom) + '</div><div class="mute small">' + esc(e.socs.map(socNom).join(' et ')) + ' · ' + nb + (e.midi ? ' · midi 60 min' : '') + (e.tableau === false ? ' · hors tableau' : '') + (e.actif ? '' : ' · désactivé') + '</div></div>' +
         '<button class="btn ghost sm" data-act="emp-edit" data-id="' + esc(e.id) + '">Modifier</button></div>';
     });
     return h + '</div>';
@@ -218,7 +218,8 @@
             }).join('') + '</div>';
         } else h += '<div class="mute small">Aucun bâtiment pour cette société. Créez-les ou importez-les dans l’onglet Centres.</div>';
       }
-      h += chk('data-b="midi"', x.midi, 'Midi obligatoire de ' + cfg.regles.midiMin + ' min (règle GIOT)') + chk('data-b="actif"', x.actif, 'Actif : peut pointer et figure au tableau d’équipe');
+      h += chk('data-b="midi"', x.midi, 'Midi obligatoire de ' + cfg.regles.midiMin + ' min (règle GIOT)') + chk('data-b="tableau"', x.tableau !== false, 'Figure au tableau d’équipe (décoché : la personne pointe normalement, mais n’est pas affichée)') +
+        chk('data-b="actif"', x.actif, 'Actif : peut se connecter et pointer (décocher seulement pour un départ)');
     } else if (sheet.type === 'dos') {
       h += '<h2>' + (x.id ? 'Modifier le centre' : 'Nouveau centre') + '</h2>' +
         '<label class="f" for="d-nom">Nom (adresse de l’immeuble, chantier, centre général)<input id="d-nom" data-f="nom" maxlength="60" value="' + esc(x.nom) + '"></label>' +
@@ -337,10 +338,10 @@
       return false;
     },
     alogout: function () { var t = token; setToken(''); cfg = null; err = ''; flash = ''; prov = ''; info = ''; api('logout', { token: t }).catch(function () { }); },
-    'emp-new': function () { sheet = { type: 'emp', x: { id: '', prenom: '', nom: '', pin: '', socs: Object.keys(cfg.socs).slice(0, 1), tous: true, dossiers: [], midi: false, actif: true } }; },
+    'emp-new': function () { sheet = { type: 'emp', x: { id: '', prenom: '', nom: '', pin: '', socs: Object.keys(cfg.socs).slice(0, 1), tous: true, dossiers: [], midi: false, actif: true, tableau: true } }; },
     'emp-edit': function (ds) {
       var e = cfg.employes.filter(function (p) { return p.id === ds.id; })[0]; if (!e) return;
-      sheet = { type: 'emp', x: { id: e.id, prenom: e.prenom, nom: e.nom, pin: '', socs: e.socs.slice(), tous: !!e.tous, dossiers: (e.dossiers || []).slice(), midi: !!e.midi, actif: !!e.actif } };
+      sheet = { type: 'emp', x: { id: e.id, prenom: e.prenom, nom: e.nom, pin: '', socs: e.socs.slice(), tous: !!e.tous, dossiers: (e.dossiers || []).slice(), midi: !!e.midi, actif: !!e.actif, tableau: e.tableau !== false } };
     },
     'emp-save': function () {
       var x = sheet.x; sheet.err = '';

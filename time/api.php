@@ -70,7 +70,8 @@ function cfg(): array {
 }
 function empIndex(array $c, string $id): int { foreach ($c['employes'] as $i => $e) if ($e['id'] === $id) return $i; return -1; }
 function dosIndex(array $c, string $id): int { foreach ($c['dossiers'] as $i => $d) if ($d['id'] === $id) return $i; return -1; }
-function empAdmin(array $e): array { $o = $e; $o['pin'] = !empty($e['pinHash']); unset($o['pinHash']); return $o; }
+function auTableau(array $e): bool { return !isset($e['tableau']) || !empty($e['tableau']); } // figure au tableau d'équipe (par défaut : oui)
+function empAdmin(array $e): array { $o = $e; $o['pin'] = !empty($e['pinHash']); $o['tableau'] = auTableau($e); unset($o['pinHash']); return $o; }
 function mesDossiers(array $e, array $c): array {
   $o = [];
   foreach ($c['dossiers'] as $d) {
@@ -294,6 +295,8 @@ switch ($a) {
     $abs = rd('abs', []); $jour = date('Y-m-d', (int) (NOW / 1000));
     foreach ($c['employes'] as $e) {
       if (empty($e['actif'])) continue;
+      // Hors tableau d'équipe : le nom reste dans la liste de connexion, mais aucun statut n'est transmis et le tableau ne l'affiche pas.
+      if (!auTableau($e)) { $list[] = ['id' => $e['id'], 'prenom' => $e['prenom'], 'nom' => $e['nom'], 'code' => 'absent', 'dossier' => null, 'since' => null, 'hors' => true]; continue; }
       $s = $et[$e['id']] ?? null;
       $o = ['id' => $e['id'], 'prenom' => $e['prenom'], 'nom' => $e['nom'], 'code' => 'absent', 'dossier' => null, 'since' => $s['ts'] ?? null];
       if ($s && $s['t'] === 'travail') { $o['code'] = ($s['lieu'] ?? '') === 'mission' ? 'mission' : 'bureau'; $o['dossier'] = $dn[$s['d'] ?? ''] ?? null; }
@@ -502,6 +505,7 @@ switch ($a) {
     $e['tous'] = !empty($x['tous']);
     $wasActif = !empty($e['actif']);
     $e['actif'] = !isset($x['actif']) || !empty($x['actif']);
+    $e['tableau'] = !isset($x['tableau']) || !empty($x['tableau']); // indépendant de « actif » : on peut pointer sans figurer au tableau
     $ds = [];
     foreach ((array) ($x['dossiers'] ?? []) as $d) if (is_string($d) && dosIndex($c, $d) >= 0 && !in_array($d, $ds, true)) $ds[] = $d;
     $e['dossiers'] = $ds;
