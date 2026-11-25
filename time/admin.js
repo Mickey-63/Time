@@ -79,7 +79,7 @@
       var nA = e.dossiers.filter(function (id) { var d = dosById(id); return d && d.actif && !d.commun; }).length;
       var nC = cfg.dossiers.filter(function (d) { return d.actif && d.commun && e.socs.indexOf(d.soc) >= 0; }).length;
       var nb = nA ? nA + ' bâtiment' + (nA > 1 ? 's' : '') + ' épinglé' + (nA > 1 ? 's' : '') : 'aucun bâtiment épinglé';
-      h += '<div class="row' + (e.actif ? '' : ' off') + '"><div><div class="nm">' + esc(e.prenom + ' ' + e.nom) + '</div><div class="mute small">' + esc(e.socs.map(socNom).join(' et ')) + ' · ' + nb + (e.midi ? '' : ' · sans midi obligatoire') + (e.tableau === false ? ' · hors tableau' : '') + (e.actif ? '' : ' · désactivé') + '</div></div>' +
+      h += '<div class="row' + (e.actif ? '' : ' off') + '"><div><div class="nm">' + esc(e.prenom + ' ' + e.nom) + '</div><div class="mute small">' + esc(e.socs.map(socNom).join(' et ')) + ' · ' + nb + (e.midi ? '' : ' · sans midi obligatoire') + (e.tableau === false ? ' · hors tableau' : '') + (e.depart && dosById(e.depart) ? ' · départ : ' + esc(dosById(e.depart).nom) : '') + (e.actif ? '' : ' · désactivé') + '</div></div>' +
         '<button class="btn ghost sm" data-act="emp-edit" data-id="' + esc(e.id) + '">Modifier</button></div>';
     });
     return h + '</div>';
@@ -221,6 +221,14 @@
             }).join('') + '</div>';
         } else h += '<div class="mute small">Aucun bâtiment pour cette société. Créez-les ou importez-les dans l’onglet Centres.</div>';
       }
+      {
+        // Centre de départ (bouton « Commencer la journée ») : celui de la société, ou un centre choisi pour la personne.
+        var soc0 = cfg.dossiers.filter(function (d) { return d.defaut && d.actif && x.socs.indexOf(d.soc) >= 0; })[0];
+        var cands = cfg.dossiers.filter(function (d) { return d.actif && x.socs.indexOf(d.soc) >= 0 && d !== soc0; }).sort(function (a, b) { return (b.commun - a.commun) || byNom(a, b); });
+        h += '<label class="f" for="e-depart">Centre de départ<select id="e-depart" data-f="depart"><option value="">Centre de l’entreprise' + (soc0 ? ' (' + esc(soc0.nom) + ')' : '') + '</option>' +
+          cands.map(function (d) { return '<option value="' + esc(d.id) + '"' + (x.depart === d.id ? ' selected' : '') + '>' + esc(d.nom) + '</option>'; }).join('') + '</select></label>' +
+          '<div class="mute small">Centre du bouton « Commencer la journée ». L’employé peut aussi le choisir lui-même : appui long d’une seconde sur un centre.</div>';
+      }
       h += '<div class="sec"><span>Options</span></div>' +
         chk('data-b="tableau"', x.tableau !== false, 'Figure au tableau d’équipe') +
         chk('data-b="midi"', x.midi, 'Midi obligatoire de ' + cfg.regles.midiMin + ' min : le temps manquant est retiré de ses heures') +
@@ -344,10 +352,10 @@
       return false;
     },
     alogout: function () { var t = token; setToken(''); cfg = null; err = ''; flash = ''; prov = ''; info = ''; api('logout', { token: t }).catch(function () { }); },
-    'emp-new': function () { sheet = { type: 'emp', x: { id: '', prenom: '', nom: '', pin: '', socs: Object.keys(cfg.socs).slice(0, 1), tous: true, dossiers: [], midi: true, actif: true, tableau: true } }; },
+    'emp-new': function () { sheet = { type: 'emp', x: { id: '', prenom: '', nom: '', pin: '', socs: Object.keys(cfg.socs).slice(0, 1), tous: true, dossiers: [], midi: true, actif: true, tableau: true, depart: '' } }; },
     'emp-edit': function (ds) {
       var e = cfg.employes.filter(function (p) { return p.id === ds.id; })[0]; if (!e) return;
-      sheet = { type: 'emp', x: { id: e.id, prenom: e.prenom, nom: e.nom, pin: '', socs: e.socs.slice(), tous: !!e.tous, dossiers: (e.dossiers || []).slice(), midi: !!e.midi, actif: !!e.actif, tableau: e.tableau !== false } };
+      sheet = { type: 'emp', x: { id: e.id, prenom: e.prenom, nom: e.nom, pin: '', socs: e.socs.slice(), tous: !!e.tous, dossiers: (e.dossiers || []).slice(), midi: !!e.midi, actif: !!e.actif, tableau: e.tableau !== false, depart: e.depart || '' } };
     },
     'emp-save': function () {
       var x = sheet.x; sheet.err = '';

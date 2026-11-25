@@ -28,7 +28,7 @@ G.NOM = 'GIOTimePRO';
   // Modes d'emploi et règles du travail : trois PDF tenus à jour dans le dépôt (sources dans .manuels/). build.py écrit aussi leurs pages en images dans aide/ :
   // aide.html les affiche avec un bouton de retour, parce qu'un PDF ouvert directement enferme l'utilisateur dans l'application
   // installée sur l'écran d'accueil de l'iPhone (pas de bouton « précédent »). À chaque nouvelle version : changer v et le nombre de pages.
-  G.MANUELS = { v: '2026-11-25d', docs: {
+  G.MANUELS = { v: '2026-11-25e', docs: {
     nuls: { titre: 'GIOTimePRO pour les nuls', court: 'Pour les nuls', pdf: 'giotimepro-pour-les-nuls.pdf', pages: 1 },
     detail: { titre: 'Mode d’emploi détaillé', court: 'Mode d’emploi détaillé', pdf: 'giotimepro-mode-emploi.pdf', pages: 10 },
     regles: { titre: 'Règles du travail en Suisse', court: 'Règles du travail', pdf: 'giotimepro-regles-travail.pdf', pages: 3 }

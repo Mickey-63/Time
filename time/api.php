@@ -107,11 +107,18 @@ function importer(array &$c, string $soc, array $items, bool $commun): array {
   return [$n, $dbl];
 }
 /* Centre par défaut de l'employé : celui sur lequel la journée commence. */
-function defautDe(array $e, array $c): ?string {
+/* Centre de départ : celui du bouton « Commencer la journée ». Le centre choisi pour cette personne (par elle-même, appui long
+   sur un centre, ou dans sa fiche) ; sinon le centre par défaut de sa société (Travail courant). */
+function defautSoc(array $e, array $c): ?string {
   foreach ($e['socs'] as $s) foreach ($c['dossiers'] as $d) {
     if ($d['soc'] === $s && !empty($d['defaut']) && !empty($d['actif'])) return $d['id'];
   }
   return null;
+}
+function defautDe(array $e, array $c): ?string {
+  $p = (string) ($e['depart'] ?? '');
+  if ($p !== '' && in_array($p, mesDossiers($e, $c), true)) return $p;
+  return defautSoc($e, $c);
 }
 function nomCle(string $s): string { return function_exists('mb_strtolower') ? mb_strtolower(trim($s), 'UTF-8') : strtolower(trim($s)); }
 /* Première mise en place des centres communs GIOT (une seule fois). Tout reste modifiable dans l'administration. */
@@ -396,12 +403,27 @@ switch ($a) {
     foreach ($c['dossiers'] as $d) $dl[] = ['id' => $d['id'], 'nom' => $d['nom'], 'code' => $d['code'], 'soc' => $d['soc'], 'commun' => !empty($d['commun'])];
     out([
       'now' => NOW,
-      'me' => ['id' => $e['id'], 'prenom' => $e['prenom'], 'nom' => $e['nom'], 'socs' => $e['socs'], 'midi' => !empty($e['midi'])],
+      'me' => ['id' => $e['id'], 'prenom' => $e['prenom'], 'nom' => $e['nom'], 'socs' => $e['socs'], 'midi' => !empty($e['midi']), 'depart' => defautDe($e, $c) !== defautSoc($e, $c) ? defautDe($e, $c) : ''],
       'socs' => $c['socs'], 'dossiers' => $dl, 'mes' => mesDossiers($e, $c), 'epingles' => epingles($e, $c), 'defaut' => defautDe($e, $c), 'regles' => $c['regles'], 'absences' => array_values(array_filter(absDe($pid), function ($a) { return $a['au'] >= date('Y-m-d', (int) (NOW / 1000) - 60 * 86400); })), 'events' => $recent,
     ]);
   }
 
   /* L'employé change lui-même son code PIN : l'ancien est exigé ; ses autres appareils sont déconnectés. */
+  // L'employé choisit son centre de départ (appui long sur un centre). d vide : retour au centre de sa société.
+  case 'depart': {
+    $pid = needEmp($in);
+    lock();
+    $c = cfg();
+    $i = empIndex($c, $pid);
+    if ($i < 0 || empty($c['employes'][$i]['actif'])) fail('Accès désactivé.', 401);
+    $d = (string) ($in['d'] ?? '');
+    if ($d !== '' && !in_array($d, mesDossiers($c['employes'][$i], $c), true)) fail('Ce centre ne fait pas partie des tiens.');
+    if ($d === '' || $d === defautSoc($c['employes'][$i], $c)) unset($c['employes'][$i]['depart']); else $c['employes'][$i]['depart'] = $d;
+    wr('cfg', $c);
+    $e = $c['employes'][$i];
+    out(['defaut' => defautDe($e, $c), 'depart' => defautDe($e, $c) !== defautSoc($e, $c) ? defautDe($e, $c) : '']);
+  }
+
   case 'pin_change': {
     $pid = needEmp($in);
     $key = 'pin:' . $pid . ':' . ip();
@@ -523,6 +545,10 @@ switch ($a) {
     $wasActif = !empty($e['actif']);
     $e['actif'] = !isset($x['actif']) || !empty($x['actif']);
     $e['tableau'] = !isset($x['tableau']) || !empty($x['tableau']); // indépendant de « actif » : on peut pointer sans figurer au tableau
+    if (array_key_exists('depart', $x)) { // centre de départ choisi pour la personne ; vide : celui de sa société
+      $p = (string) $x['depart'];
+      if ($p === '' || dosIndex($c, $p) < 0) unset($e['depart']); else $e['depart'] = $p;
+    }
     $ds = [];
     foreach ((array) ($x['dossiers'] ?? []) as $d) if (is_string($d) && dosIndex($c, $d) >= 0 && !in_array($d, $ds, true)) $ds[] = $d;
     $e['dossiers'] = $ds;

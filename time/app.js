@@ -242,7 +242,7 @@
       var t0 = on ? Math.max(st.since, E.dayStart(today)) : 0;
       return '<div class="dos' + (on ? ' on' : '') + (wait ? ' wait' : '') + '">' +
         '<button class="hit" data-act="dossier" data-d="' + esc(id) + '" aria-pressed="' + on + '" aria-label="' + esc(d.nom + (on ? ', en cours' : '')) + '">' +
-        '<span class="nm">' + esc(d.nom) + '</span><span class="ft"><span class="tag">' + (id === def ? 'par défaut' : esc(socCourt(d.soc))) + '</span><span>' + (on ? tick(ms - (t - t0), t0) : (ms ? E.dur(ms) : '')) + '</span></span></button>' +
+        '<span class="nm">' + esc(d.nom) + '</span><span class="ft"><span class="tag">' + (id === def ? 'départ' : esc(socCourt(d.soc))) + '</span><span>' + (on ? tick(ms - (t - t0), t0) : (ms ? E.dur(ms) : '')) + '</span></span></button>' +
         '<button class="fav" data-act="fav" data-d="' + esc(id) + '" aria-pressed="' + fav + '" aria-label="' + (fav ? 'Retirer des favoris' : 'Ajouter aux favoris') + '">' + ic('star') + '</button></div>';
     };
     var bloc = function (titre, droite, ids) {
@@ -324,8 +324,19 @@
     var h = '';
     if (sheet.type === 'menu') {
       h += '<h2>' + esc(S.me.prenom + ' ' + S.me.nom) + '</h2><a class="btn ghost full" href="etat.html">Tableau d’équipe</a>' + window.aide('btn ghost full');
+      if (defaut()) h += '<div class="mute small">Tes journées commencent sur « ' + esc(dos(defaut()).nom) + ' ». Pour changer, garde le doigt une seconde sur un autre centre.</div>';
       if (pending()) h += '<div class="note">' + pending() + ' pointage(s) pas encore transmis. Ils restent sur ce téléphone et partiront à ta prochaine connexion.</div>';
       h += '<button class="btn ghost full" data-act="pin">Changer mon code PIN</button><button class="btn ghost full" data-act="logout">Se déconnecter</button>';
+    } else if (sheet.type === 'depart') {
+      // Centre de départ : ouvert par un appui long sur un centre. Rien n'est pointé.
+      var cd = dos(sheet.d), deja = sheet.d === defaut(), perso = S.me.depart || '';
+      h += '<h2>Centre de départ</h2>';
+      if (deja && perso) h += '<div class="mute">Tes journées commencent sur « ' + esc(cd.nom) + ' ».</div>' +
+        '<button class="btn full" data-act="depart-save" data-d=""' + (sheet.busy ? ' disabled' : '') + '>Revenir au centre de l’entreprise</button>';
+      else if (deja) h += '<div class="mute">« ' + esc(cd.nom) + ' » est déjà ton centre de départ.</div>';
+      else h += '<div class="mute">Commencer tes journées sur « ' + esc(cd.nom) + ' » ? Le bouton Commencer la journée te mettra sur ce centre chaque matin. Rien n’est pointé maintenant.</div>' +
+        '<button class="btn full" data-act="depart-save" data-d="' + esc(sheet.d) + '"' + (sheet.busy ? ' disabled' : '') + '>Oui, commencer mes journées ici</button>';
+      h += (sheet.err ? '<div class="err" role="alert">' + esc(sheet.err) + '</div>' : '');
     } else if (sheet.type === 'pin') {
       h += '<h2>Changer mon code PIN</h2><div class="mute">4 à 8 chiffres. Tes autres appareils devront se reconnecter avec le nouveau code.</div>' +
         '<label class="f" for="pin-old">Code PIN actuel<input class="pin" id="pin-old" type="password" inputmode="numeric" autocomplete="current-password" maxlength="8" value="' + esc(sheet.o || '') + '"></label>' +
@@ -433,6 +444,14 @@
         function (e) { if (sheet) { sheet.busy = false; sheet.err = e.status ? e.message : 'Serveur injoignable. Réessaie avec du réseau.'; } }).then(function () { render(true); });
       return false;
     },
+    'depart-save': function (ds) {
+      var d = ds.d || ''; sheet.busy = true; sheet.err = ''; render(true);
+      api('depart', { token: S.token, d: d }).then(function (r) {
+        S.defaut = r.defaut || null; S.me.depart = r.depart || ''; save(); sheet = null;
+        toast(S.defaut ? 'Tes journées commenceront sur « ' + dos(S.defaut).nom + ' ».' : 'Centre de départ enregistré.');
+      }, function (e) { if (sheet) { sheet.busy = false; sheet.err = e.status ? e.message : 'Serveur injoignable. Réessaie avec du réseau.'; } }).then(function () { render(true); });
+      return false;
+    },
     close: function () { sheet = null; },
     'close-veil': function (ds, el, ev) { if (ev.target === el) sheet = null; else return false; },
     tab: function (ds) { S.tab = ds.t; var m = document.getElementById('main'); if (m) m.scrollTop = 0; },
@@ -467,7 +486,25 @@
       toast('Heure corrigée. L’ancienne valeur reste dans l’historique.');
     }
   };
+  /* Appui long (1 seconde) sur un centre : choisir son centre de départ. Un appui court pointe, comme toujours. */
+  var lp = null, lpFait = false;
+  function lpStop() { if (lp) { clearTimeout(lp.t); lp = null; } }
+  root.addEventListener('pointerdown', function (ev) {
+    lpStop(); lpFait = false;
+    var el = ev.target.closest('.dos [data-act="dossier"]'); if (!el || !S.me) return;
+    var d = el.getAttribute('data-d');
+    lp = { x: ev.clientX, y: ev.clientY, t: setTimeout(function () {
+      lp = null; lpFait = true;
+      try { if (navigator.vibrate) navigator.vibrate(30); } catch (e) { }
+      sheet = { type: 'depart', d: d }; render(true);
+    }, 1000) };
+  });
+  root.addEventListener('pointermove', function (ev) { if (lp && (Math.abs(ev.clientX - lp.x) > 10 || Math.abs(ev.clientY - lp.y) > 10)) lpStop(); });
+  ['pointerup', 'pointercancel'].forEach(function (n) { root.addEventListener(n, lpStop); });
+  window.addEventListener('scroll', lpStop, true);
+  root.addEventListener('contextmenu', function (ev) { if (ev.target.closest('.dos')) ev.preventDefault(); });
   root.addEventListener('click', function (ev) {
+    if (lpFait) { lpFait = false; ev.preventDefault(); return; } // le relâchement d'un appui long ne pointe pas
     var el = ev.target.closest('[data-act]'); if (!el || el.disabled) return;
     var fn = H[el.getAttribute('data-act')]; if (!fn) return;
     var prev = toastMsg, res = fn(el.dataset, el, ev);
