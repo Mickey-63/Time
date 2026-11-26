@@ -156,12 +156,13 @@ function miseANiveau(): void {
 function ip(): string { return (string) ($_SERVER['REMOTE_ADDR'] ?? '?'); }
 
 /* ---------- sessions et limitation des essais ---------- */
-function sessNew(string $who, int $ttl): string {
+function sessNew(string $who, int $ttl, bool $bureau = false): string {
   lock();
   $s = rd('sess', []);
   foreach ($s as $k => $v) if (($v['exp'] ?? 0) < NOW) unset($s[$k]);
   $tok = bin2hex(random_bytes(24));
   $s[hash('sha256', $tok)] = ['who' => $who, 'exp' => NOW + $ttl];
+  if ($bureau) $s[hash('sha256', $tok)]['bureau'] = true; // pointage d'un employé ouvert depuis l'administration
   wr('sess', $s);
   return $tok;
 }
@@ -171,6 +172,13 @@ function sessWho(array $in): string {
   $v = rd('sess', [])[hash('sha256', $tok)] ?? null;
   if (!$v || ($v['exp'] ?? 0) < NOW) return '';
   return (string) $v['who'];
+}
+// Vrai quand la page de pointage a été ouverte par le bureau (« Ouvrir son pointage ») : il corrige un centre sans limite de date.
+function sessBureau(array $in): bool {
+  $tok = (string) ($in['token'] ?? '');
+  if ($tok === '') return false;
+  $v = rd('sess', [])[hash('sha256', $tok)] ?? null;
+  return !empty($v['bureau']);
 }
 function sessDrop(string $who, string $keepToken = ''): void {
   lock();
@@ -277,7 +285,11 @@ function evClean(array $e, string $pid, array $dos): ?array {
     $h = [];
     foreach (array_slice($e['hist'], -20) as $x) {
       if (!is_array($x)) continue;
-      $h[] = ['old' => (int) ($x['old'] ?? 0), 'neu' => (int) ($x['neu'] ?? 0), 'at' => (int) ($x['at'] ?? 0), 'motif' => cut((string) ($x['motif'] ?? ''), 200)];
+      $y = ['old' => (int) ($x['old'] ?? 0), 'neu' => (int) ($x['neu'] ?? 0), 'at' => (int) ($x['at'] ?? 0), 'motif' => cut((string) ($x['motif'] ?? ''), 200)];
+      // Correction du centre (d0 → d1) ou du lieu (l0 → l1) : l'ancienne valeur reste dans l'historique.
+      foreach (['d0', 'd1'] as $k) if (isset($x[$k]) && is_string($x[$k]) && preg_match('/^[A-Za-z0-9_-]{1,64}$/', $x[$k])) $y[$k] = $x[$k];
+      foreach (['l0', 'l1'] as $k) if (isset($x[$k]) && in_array($x[$k], ['bureau', 'mission'], true)) $y[$k] = $x[$k];
+      $h[] = $y;
     }
     if ($h) $o['hist'] = $h;
   }
@@ -403,7 +415,7 @@ switch ($a) {
     foreach ($c['dossiers'] as $d) $dl[] = ['id' => $d['id'], 'nom' => $d['nom'], 'code' => $d['code'], 'soc' => $d['soc'], 'commun' => !empty($d['commun'])];
     out([
       'now' => NOW,
-      'me' => ['id' => $e['id'], 'prenom' => $e['prenom'], 'nom' => $e['nom'], 'socs' => $e['socs'], 'midi' => !empty($e['midi']), 'depart' => defautDe($e, $c) !== defautSoc($e, $c) ? defautDe($e, $c) : ''],
+      'me' => ['id' => $e['id'], 'prenom' => $e['prenom'], 'nom' => $e['nom'], 'socs' => $e['socs'], 'midi' => !empty($e['midi']), 'bureau' => sessBureau($in), 'depart' => defautDe($e, $c) !== defautSoc($e, $c) ? defautDe($e, $c) : ''],
       'socs' => $c['socs'], 'dossiers' => $dl, 'mes' => mesDossiers($e, $c), 'epingles' => epingles($e, $c), 'defaut' => defautDe($e, $c), 'regles' => $c['regles'], 'absences' => array_values(array_filter(absDe($pid), function ($a) { return $a['au'] >= date('Y-m-d', (int) (NOW / 1000) - 60 * 86400); })), 'events' => $recent,
     ]);
   }
@@ -784,7 +796,7 @@ switch ($a) {
     $i = empIndex($c, $id);
     if ($i < 0) fail('Employé introuvable.', 404);
     if (empty($c['employes'][$i]['actif'])) fail('Cet employé est désactivé : réactivez-le pour ouvrir son pointage.', 409);
-    out(['token' => sessNew('e:' . $id, JOUR / 2), 'pid' => $id]);
+    out(['token' => sessNew('e:' . $id, JOUR / 2, true), 'pid' => $id]);
   }
 
   case 'dos_del': {

@@ -248,12 +248,18 @@ h3.soc { font-size: 20px; margin-top: 4px; }
 .cmd button.main { font-size: 13.5px; }
 .btn svg.ic { margin-right: 8px; }
 .blist { display: flex; flex-direction: column; border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; }
-.brow { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 50px; padding: 8px 14px; border-bottom: 1px solid var(--line); font: 600 17px/1.15 var(--f-display); text-align: left; }
+.brow { display: flex; align-items: stretch; min-height: 50px; border-bottom: 1px solid var(--line); }
+.brow .pick { flex: 1; min-width: 0; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 4px 8px 14px; font: 600 17px/1.15 var(--f-display); text-align: left; color: inherit; }
+/* Étoile de la liste : garde l'adresse sur l'écran de pointage. */
+.bfav { flex: none; width: 50px; display: grid; place-items: center; color: var(--mute); opacity: .5; }
+.bfav[aria-pressed="true"] { color: var(--orange); opacity: 1; }
+.bfav[aria-pressed="true"] svg { fill: currentColor; }
+.brow.on .bfav { color: inherit; }
 .brow:last-child { border-bottom: 0; }
 .brow[hidden] { display: none; }
 .brow.on { background: var(--vert); color: var(--on-vert); }
 .brow.on .mute { color: inherit; }
-.brow span:last-child { flex: none; white-space: nowrap; }
+.brow .pick span:last-child { flex: none; white-space: nowrap; }
 
 /* Repère « pause longue » du tableau d'équipe : calme, sans rouge ni clignotement, sans durée */
 .btile .lg { align-self: flex-start; margin-top: 4px; padding: 3px 10px; border-radius: 999px; background: rgba(0, 0, 0, .3); color: #fff; font: 700 clamp(12px, 1vw, 16px)/1.2 var(--f-display); letter-spacing: .02em; }

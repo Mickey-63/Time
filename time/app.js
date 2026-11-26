@@ -185,7 +185,7 @@
         '<button class="btn full" data-act="login"' + (busy ? ' disabled' : '') + '>' + (busy ? 'Connexion…' : 'Se connecter') + '</button>';
       if (pending()) h += '<div class="mute small">' + pending() + ' pointage(s) de la dernière session attendent sur ce téléphone. Ils partiront à la reconnexion de la même personne.</div>';
     }
-    return h + '<div class="aide"><div class="sec"><span>Modes d’emploi</span><span>PDF</span></div>' + window.aide('btn ghost full') + '</div><a class="lnk" href="etat.html">Voir le tableau d’équipe</a></div>';
+    return h + '<div class="aide"><div class="sec"><span>Aide</span><span>PDF</span></div>' + window.aide('btn ghost full') + '</div><a class="lnk" href="etat.html">Voir le tableau d’équipe</a></div>';
   }
   function vApp() {
     var t = now(), list = evs(), st = E.statusOf(list), ctx = E.ctxOf(list), tab = S.tab === 'journee' ? 'journee' : 'pointage', today = E.dayKey(t);
@@ -274,6 +274,16 @@
     if (e.t === 'pause') return e.cat === 'midi' ? 'Repas' : (e.motif && e.motif !== 'Pause' ? 'Pause · ' + e.motif : 'Pause');
     return e.t === 'cafe' ? 'Café avant travail (non compté)' : 'Fin de journée';
   }
+  // Ce qu'une correction a remplacé : l'heure, le centre ou le lieu d'avant.
+  function histTxt(h) {
+    var a = [];
+    if (h.old !== h.neu) a.push(E.hhmm(h.old));
+    if (h.d0) a.push(dos(h.d0).nom);
+    if (h.l0) a.push(h.l0 === 'mission' ? 'Déplacement' : 'Bureau');
+    return 'corrigé (avant : ' + a.join(', ') + ')';
+  }
+  // Le centre et le lieu d'une écriture se corrigent le jour même ; ensuite, seul le bureau le peut (« Ouvrir son pointage »).
+  function peutCentre(e, t) { return e.t === 'travail' && (!!(S.me && S.me.bureau) || E.dayKey(e.ts) === E.dayKey(t)); }
   function timeline(date, t) {
     var list = evs(), ps = E.pieces(list, t).filter(function (x) { return x.date === date; }), h = '<div class="tl">';
     var parEv = {};
@@ -282,14 +292,14 @@
       var e = S.evs[p.evId], own = e && e.ts === p.start, hist = own && e.hist && e.hist.length ? e.hist[e.hist.length - 1] : null;
       var se = p.t === 'travail' ? parEv[p.evId] : null, porte = se && se.carrier === p.evId && own, notee = se && (se.note || se.ci);
       h += '<div class="it"><span class="stripe s-' + (p.t === 'travail' ? (p.lieu === 'mission' ? 'mission' : 'bureau') : 'pause') + '"></span><div><div class="t1">' + E.hhmm(p.start) + ' – ' + (p.open ? 'en cours' : E.hhmm(p.end)) + ' · ' + E.dur(E.minute(p.end) - E.minute(p.start)) + '</div>' +
-        '<div class="t2">' + esc(e ? evLabel(e) : '') + (hist ? ' · corrigé (avant : ' + E.hhmm(hist.old) + ')' : '') + '</div>' +
+        '<div class="t2">' + esc(e ? evLabel(e) : '') + (hist ? ' · ' + esc(histTxt(hist)) : '') + '</div>' +
         (porte && notee ? '<div class="t3">' + (estBat(se.d) ? esc(E.CODES[se.ci] || E.CODES.D) + (se.note ? ' · ' : '') : '') + esc(se.note) + '</div>' : '') + '</div>' +
         '<span class="acts">' + (porte && (noteOn() || notee) ? '<button class="btn ghost sm" data-act="note" data-ev="' + esc(p.evId) + '">Note</button>' : '') +
         (own ? '<button class="btn ghost sm" data-act="corriger" data-ev="' + esc(p.evId) + '">Corriger</button>' : '') + '</span></div>';
     });
     list.filter(function (e) { return e.t === 'fin' && E.dayKey(e.ts) === date; }).forEach(function (e) {
       var hist = e.hist && e.hist.length ? e.hist[e.hist.length - 1] : null;
-      h += '<div class="it"><span class="stripe"></span><div><div class="t1">' + E.hhmm(e.ts) + ' · Fin de journée</div>' + (hist ? '<div class="t2">corrigé (avant : ' + E.hhmm(hist.old) + ')</div>' : '') + '</div>' +
+      h += '<div class="it"><span class="stripe"></span><div><div class="t1">' + E.hhmm(e.ts) + ' · Fin de journée</div>' + (hist ? '<div class="t2">' + esc(histTxt(hist)) + '</div>' : '') + '</div>' +
         '<button class="btn ghost sm" data-act="corriger" data-ev="' + esc(e.id) + '">Corriger</button></div>';
     });
     if (!ps.length) h += '<div class="mute">Aucun pointage ce jour-là.</div>';
@@ -323,10 +333,19 @@
     if (!sheet) return '';
     var h = '';
     if (sheet.type === 'menu') {
-      h += '<h2>' + esc(S.me.prenom + ' ' + S.me.nom) + '</h2><a class="btn ghost full" href="etat.html">Tableau d’équipe</a>' + window.aide('btn ghost full');
-      if (defaut()) h += '<div class="mute small">Tes journées commencent sur « ' + esc(dos(defaut()).nom) + ' ». Pour changer, garde le doigt une seconde sur un autre centre.</div>';
+      h += '<h2>' + esc(S.me.prenom + ' ' + S.me.nom) + '</h2><a class="btn ghost full" href="etat.html">Tableau d’équipe</a>' +
+        '<button class="btn ghost full" data-act="aide">Aide</button><button class="btn ghost full" data-act="reglages">Réglages</button>';
       if (pending()) h += '<div class="note">' + pending() + ' pointage(s) pas encore transmis. Ils restent sur ce téléphone et partiront à ta prochaine connexion.</div>';
-      h += '<button class="btn ghost full" data-act="pin">Changer mon code PIN</button><button class="btn ghost full" data-act="logout">Se déconnecter</button>';
+      h += '<button class="btn ghost full" data-act="logout">Se déconnecter</button>';
+    } else if (sheet.type === 'aide') {
+      h += '<h2>Aide</h2><div class="mute small">Modes d’emploi, règles du travail et confidentialité. Chaque document s’enregistre ou s’imprime en PDF.</div>' + window.aide('btn ghost full');
+    } else if (sheet.type === 'reglages') {
+      var nf = (S.favs || []).filter(function (id) { return batiments().indexOf(id) >= 0; }).length;
+      h += '<h2>Réglages</h2>' +
+        '<div class="sec"><span>Code PIN</span></div><button class="btn ghost full" data-act="pin">Changer mon code PIN</button>' +
+        '<div class="sec"><span>Centre de départ</span></div><div class="mute small">' + (defaut() ? 'Tes journées commencent sur « ' + esc(dos(defaut()).nom) + ' ». ' : '') + 'Pour changer, garde le doigt une seconde sur un autre centre de l’écran de pointage.</div>';
+      if (batiments().length) h += '<div class="sec"><span>Bâtiments favoris</span><span>' + nf + '</span></div><div class="mute small">Une étoile garde un bâtiment sur ton écran de pointage. Les favoris sont gardés sur ce téléphone.</div>' +
+        '<button class="btn ghost full" data-act="bat">Choisir mes favoris</button>';
     } else if (sheet.type === 'depart') {
       // Centre de départ : ouvert par un appui long sur un centre. Rien n'est pointé.
       var cd = dos(sheet.d), deja = sheet.d === defaut(), perso = S.me.depart || '';
@@ -345,11 +364,13 @@
     } else if (sheet.type === 'bat') {
       var st = E.statusOf(evs()), t = now(), today = E.dayKey(t), tt = E.totals(E.pieces(evs(), t).filter(function (x) { return x.date === today; }));
       var q = (sheet.q || '').trim().toLowerCase(), bat = batiments();
-      h += '<h2>Bâtiments</h2><div class="mute small">Touche l’adresse sur laquelle tu travailles : le temps lui est chargé dès maintenant.</div>' +
+      h += '<h2>Bâtiments</h2><div class="mute small">Touche l’adresse sur laquelle tu travailles : le temps lui est chargé dès maintenant. L’étoile garde une adresse sur ton écran de pointage.</div>' +
         (bat.length > 8 ? '<input class="search" id="q-bat" type="search" placeholder="Chercher une adresse" aria-label="Chercher une adresse" autocomplete="off" value="' + esc(sheet.q || '') + '">' : '') + '<div class="blist">';
       bat.forEach(function (id) {
         var d = dos(id), on = st.t === 'travail' && st.d === id, nm = (d.nom + ' ' + d.code).toLowerCase(), ms = tt.parDossier[id] || 0;
-        h += '<button class="brow' + (on ? ' on' : '') + '" data-act="bat-pick" data-d="' + esc(id) + '" data-name="' + esc(nm) + '"' + (q && nm.indexOf(q) < 0 ? ' hidden' : '') + '><span>' + esc(d.nom) + '</span><span class="mute small">' + (on ? 'en cours' : (ms ? E.dur(ms) : '')) + '</span></button>';
+        var fv = (S.favs || []).indexOf(id) >= 0;
+        h += '<div class="brow' + (on ? ' on' : '') + '" data-name="' + esc(nm) + '"' + (q && nm.indexOf(q) < 0 ? ' hidden' : '') + '><button class="pick" data-act="bat-pick" data-d="' + esc(id) + '"><span>' + esc(d.nom) + '</span><span class="mute small">' + (on ? 'en cours' : (ms ? E.dur(ms) : '')) + '</span></button>' +
+          '<button class="bfav" data-act="bat-fav" data-d="' + esc(id) + '" aria-pressed="' + fv + '" aria-label="' + (fv ? 'Retirer des favoris' : 'Ajouter aux favoris') + ' : ' + esc(d.nom) + '">' + ic('star') + '</button></div>';
       });
       h += '</div>';
     } else if (sheet.type === 'note') {
@@ -366,10 +387,19 @@
       if (sn && sheet.oblig) return '<div class="veil"><div class="sheet" role="dialog" aria-modal="true">' + h + '</div></div>';
     } else if (sheet.type === 'corr') {
       var e = S.evs[sheet.ev];
-      if (e) h += '<h2>Corriger une heure</h2><div>' + esc(evLabel(e)) + '</div><div class="mute">Enregistré : ' + E.frDate(E.dayKey(e.ts)) + ' à ' + E.hhmm(e.ts) + '. L’ancienne valeur et ta raison restent dans l’historique et dans l’export.</div>' +
-        '<div class="two"><label class="f" for="corr-date">Date réelle<input type="date" id="corr-date" value="' + esc(sheet.dt || E.dayKey(e.ts)) + '"></label><label class="f" for="corr-time">Heure réelle<input type="time" id="corr-time" value="' + esc(sheet.tm || E.hhmm(e.ts)) + '"></label></div>' +
-        '<label class="f" for="corr-motif">Raison<input id="corr-motif" placeholder="Par exemple : oubli de fin de journée" maxlength="200" value="' + esc(sheet.mo || '') + '"></label>' +
-        (sheet.err ? '<div class="err" role="alert">' + esc(sheet.err) + '</div>' : '') + '<button class="btn full" data-act="corr-send">Enregistrer la correction</button>';
+      if (e) {
+        var trav = e.t === 'travail', pc = peutCentre(e, now()), cd0 = sheet.d || e.d, cl0 = sheet.l || e.lieu;
+        h += '<h2>' + (trav ? 'Corriger une écriture' : 'Corriger une heure') + '</h2><div>' + esc(evLabel(e)) + '</div><div class="mute">Enregistré : ' + E.frDate(E.dayKey(e.ts)) + ' à ' + E.hhmm(e.ts) + '. L’ancienne valeur et ta raison restent dans l’historique et dans l’export.</div>' +
+          '<div class="two"><label class="f" for="corr-date">Date réelle<input type="date" id="corr-date" value="' + esc(sheet.dt || E.dayKey(e.ts)) + '"></label><label class="f" for="corr-time">Heure réelle<input type="time" id="corr-time" value="' + esc(sheet.tm || E.hhmm(e.ts)) + '"></label></div>';
+        if (pc) {
+          var choix = mes().slice().sort(function (a, b) { return ((dos(b).commun ? 1 : 0) - (dos(a).commun ? 1 : 0)) || dos(a).nom.localeCompare(dos(b).nom, 'fr', { numeric: true }); });
+          if (choix.indexOf(cd0) < 0) choix.unshift(cd0);
+          h += '<label class="f" for="corr-d">Centre réel<select id="corr-d">' + choix.map(function (id) { return '<option value="' + esc(id) + '"' + (id === cd0 ? ' selected' : '') + '>' + esc(dos(id).nom) + '</option>'; }).join('') + '</select></label>' +
+            '<div class="seg" role="group" aria-label="Lieu réel"><button data-act="corr-lieu" data-l="bureau" aria-pressed="' + (cl0 !== 'mission') + '">' + ic('bureau') + 'Au bureau</button><button data-act="corr-lieu" data-l="mission" aria-pressed="' + (cl0 === 'mission') + '">' + ic('mission') + 'En déplacement</button></div>';
+        } else if (trav) h += '<div class="mute small">Le centre et le lieu se corrigent le jour même. Après, adresse-toi au bureau.</div>';
+        h += '<label class="f" for="corr-motif">Raison<input id="corr-motif" placeholder="Par exemple : ' + (trav ? 'mauvais centre touché' : 'oubli de fin de journée') + '" maxlength="200" value="' + esc(sheet.mo || '') + '"></label>' +
+          (sheet.err ? '<div class="err" role="alert">' + esc(sheet.err) + '</div>' : '') + '<button class="btn full" data-act="corr-send">Enregistrer la correction</button>';
+      }
     }
     return '<div class="veil" data-act="close-veil"><div class="sheet" role="dialog" aria-modal="true">' + h + '<button class="btn ghost full" data-act="close">Fermer</button></div></div>';
   }
@@ -401,6 +431,15 @@
   setInterval(function () { if (S.token) { if (!sheet) render(); sync(); } }, 30000);
 
   /* ---------- événements ---------- */
+  // Champs de la feuille de correction : relus à chaque saisie, pour survivre à un réaffichage.
+  function corrLire() {
+    if (!sheet || sheet.type !== 'corr') return;
+    var v = function (id) { var el = document.getElementById(id); return el ? el.value : null; }, x;
+    if ((x = v('corr-date')) !== null) sheet.dt = x;
+    if ((x = v('corr-time')) !== null) sheet.tm = x;
+    if ((x = v('corr-motif')) !== null) sheet.mo = x.trim();
+    if ((x = v('corr-d')) !== null) sheet.d = x;
+  }
   var H = {
     reload: function () { loadPeople(); },
     login: function () { login(); return false; },
@@ -433,6 +472,8 @@
       render(true); sync();
       return false;
     },
+    aide: function () { sheet = { type: 'aide' }; },
+    reglages: function () { sheet = { type: 'reglages' }; },
     pin: function () { sheet = { type: 'pin' }; },
     'pin-save': function () {
       var v = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; }, o = v('pin-old'), n = v('pin-n1'), n2 = v('pin-n2');
@@ -469,21 +510,35 @@
       if (st.t === 'travail') { doAct({ type: 'lieu', lieu: ds.l }); return false; }
       if (st.t === 'pause') S.lieuPause = ds.l; else S.lieu = ds.l;
     },
+    // Étoile de la liste des bâtiments : la liste reste en place (ni défilement ni recherche perdus), l'écran se met à jour à la fermeture.
+    'bat-fav': function (ds, el) {
+      var f = S.favs || (S.favs = []), i = f.indexOf(ds.d), on = i < 0;
+      if (on) f.push(ds.d); else f.splice(i, 1);
+      el.setAttribute('aria-pressed', on); el.setAttribute('aria-label', (on ? 'Retirer des favoris' : 'Ajouter aux favoris') + ' : ' + dos(ds.d).nom);
+      save(); return false;
+    },
     fav: function (ds) { var f = S.favs || (S.favs = []), i = f.indexOf(ds.d); if (i >= 0) f.splice(i, 1); else f.push(ds.d); },
     jour: function (ds) { var today = E.dayKey(now()), n = E.addDays(S.jour || today, +ds.n); S.jour = n >= today ? null : n; },
     corriger: function (ds) { sheet = { type: 'corr', ev: ds.ev }; },
+    'corr-lieu': function (ds) { corrLire(); sheet.l = ds.l; },
     'corr-send': function () {
-      var e = S.evs[sheet.ev], dt = document.getElementById('corr-date').value, tm = document.getElementById('corr-time').value, mo = document.getElementById('corr-motif').value.trim();
-      sheet.dt = dt; sheet.tm = tm; sheet.mo = mo;
+      corrLire();
+      var e = S.evs[sheet.ev], dt = sheet.dt, tm = sheet.tm, mo = sheet.mo || '', t = now();
       if (!e || !dt || !tm) { sheet.err = 'Indique la date et l’heure réelles.'; return; }
+      var pc = peutCentre(e, t), d1 = pc ? (sheet.d || e.d) : e.d, l1 = pc ? (sheet.l || e.lieu) : e.lieu;
+      var chD = pc && d1 !== e.d, chL = pc && l1 !== e.lieu;
+      var neu = E.atTime(dt, tm), chT = !(E.hhmm(neu) === E.hhmm(e.ts) && E.dayKey(neu) === E.dayKey(e.ts));
+      if (!chT && !chD && !chL) { sheet.err = pc ? 'Rien n’est changé : indique l’heure, le centre ou le lieu réel.' : 'L’heure proposée est identique à l’heure enregistrée.'; return; }
       if (mo.length < 3) { sheet.err = 'Indique la raison de la correction.'; return; }
-      var neu = E.atTime(dt, tm), t = now();
-      if (E.hhmm(neu) === E.hhmm(e.ts) && E.dayKey(neu) === E.dayKey(e.ts)) { sheet.err = 'L’heure proposée est identique à l’heure enregistrée.'; return; }
-      var chk = E.canMove(evs(), e.id, neu, t);
-      if (!chk.ok) { sheet.err = chk.err; return; }
-      e.hist = (e.hist || []).concat([{ old: e.ts, neu: neu, at: t, motif: mo }]);
-      e.ts = neu; e.rev = Math.max(t, (e.rev || 0) + 1); touch(e.id); sheet = null;
-      toast('Heure corrigée. L’ancienne valeur reste dans l’historique.');
+      if (chD && mes().indexOf(d1) < 0) { sheet.err = 'Ce centre n’est pas disponible.'; return; }
+      if (chT) { var chk = E.canMove(evs(), e.id, neu, t); if (!chk.ok) { sheet.err = chk.err; return; } }
+      var hs = { old: e.ts, neu: chT ? neu : e.ts, at: t, motif: mo };
+      if (chD) { hs.d0 = e.d; hs.d1 = d1; e.d = d1; }
+      if (chL) { hs.l0 = e.lieu; hs.l1 = l1; e.lieu = l1; }
+      e.hist = (e.hist || []).concat([hs]);
+      if (chT) e.ts = neu;
+      e.rev = Math.max(t, (e.rev || 0) + 1); touch(e.id); sheet = null;
+      toast((chD || chL ? 'Écriture corrigée' : 'Heure corrigée') + '. L’ancienne valeur reste dans l’historique.');
     }
   };
   /* Appui long (1 seconde) sur un centre : choisir son centre de départ. Un appui court pointe, comme toujours. */
@@ -513,7 +568,9 @@
     save(); render(true); sync();
   });
   root.addEventListener('input', function (ev) { if (ev.target.id === 'q-bat') { if (sheet) sheet.q = ev.target.value; filterBat(ev.target.value); }
-    if (ev.target.id === 'note-txt' && sheet) sheet.txt = ev.target.value; });
+    if (ev.target.id === 'note-txt' && sheet) sheet.txt = ev.target.value;
+    if (/^corr-/.test(ev.target.id)) corrLire(); });
+  root.addEventListener('change', function (ev) { if (/^corr-/.test(ev.target.id)) corrLire(); });
   root.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' && ev.target.id === 'lg-pin') { ev.preventDefault(); login(); } });
   root.addEventListener('focusout', function () { setTimeout(function () { if (pendingRender) render(); }, 50); });
   window.addEventListener('online', function () { online = true; sync(); render(); });
